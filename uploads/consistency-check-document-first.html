@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Consistency Check — document-first prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#F4F1EB; --paper:#FFFFFF; --ink:#1C1B19; --muted:#6B6862; --faint:#9A968D;
+    --line:#E5E0D6; --line-soft:#EFEBE2;
+    --green:#2E7D5B; --green-u:#9CC7B1; --green-bg:#EAF3ED;
+    --amber:#A9741B; --amber-u:#E2BC72; --amber-bg:#F8F0DF;
+    --red:#BB3B2C; --red-u:#E0A79E; --red-bg:#F8EBE7;
+    --violet:#5F51A8; --violet-u:#B9AFE0; --violet-bg:#EEEBF7;
+    --sans:'Inter',system-ui,sans-serif;
+    --serif:'Source Serif 4',Georgia,serif;
+    --mono:'IBM Plex Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+  .demo-strip{background:var(--ink);color:#CFCAC0;font-size:12px;text-align:center;padding:6px;letter-spacing:.02em}
+
+  /* top bar */
+  .topbar{display:flex;align-items:center;gap:28px;padding:14px 26px;background:var(--paper);border-bottom:1px solid var(--line)}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:600;font-size:16px}
+  .dots{display:flex;gap:4px}
+  .dots i{width:9px;height:9px;border-radius:50%}
+  .dots i:nth-child(1){background:var(--green)} .dots i:nth-child(2){background:var(--amber)} .dots i:nth-child(3){background:var(--red)}
+  .nav{display:flex;gap:4px;margin-left:8px}
+  .nav button{padding:7px 14px;border-radius:8px;font-weight:500;color:var(--muted);font-size:14px}
+  .nav button.on{background:var(--ink);color:#fff}
+  .nav button:not(.on):hover{background:var(--line-soft);color:var(--ink)}
+  .top-right{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .role{display:flex;background:var(--line-soft);border-radius:8px;padding:3px}
+  .role button{padding:6px 12px;border-radius:6px;font-size:13px;font-weight:500;color:var(--muted)}
+  .role button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .btn-report{display:flex;align-items:center;gap:7px;padding:8px 14px;border:1px solid var(--line);border-radius:9px;font-weight:500;font-size:13px;background:var(--paper)}
+  .btn-report:hover{border-color:var(--ink)}
+
+  /* layout */
+  .shell{display:flex;height:calc(100vh - 92px)}
+  .rail{width:236px;flex:none;border-right:1px solid var(--line);padding:20px 18px;overflow-y:auto}
+  .rail .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:10px}
+  .matter{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:18px}
+  .matter .party{font-size:12px;color:var(--muted)}
+  .matter .name{font-weight:600;font-size:14px;line-height:1.3;margin:3px 0 10px}
+  .clock{font-family:var(--mono);font-size:13px;color:var(--red);font-weight:500;display:flex;align-items:center;gap:7px}
+  .clock .pulse{width:7px;height:7px;border-radius:50%;background:var(--red);animation:pulse 1.6s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .progress-card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:14px}
+  .progress-card .row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:9px}
+  .progress-card .big{font-size:26px;font-weight:600;font-family:var(--mono)}
+  .progress-card .sub{font-size:12px;color:var(--muted)}
+  .bar{height:6px;background:var(--line-soft);border-radius:3px;overflow:hidden}
+  .bar i{display:block;height:100%;background:var(--green);width:0;transition:width .4s}
+  .filewrap{margin-top:12px;font-size:12px;display:flex;align-items:center;gap:7px;color:var(--muted)}
+  .lockpill{font-size:11px;font-weight:600;padding:3px 9px;border-radius:20px;background:var(--red-bg);color:var(--red)}
+  .lockpill.go{background:var(--green-bg);color:var(--green)}
+  .legend{font-size:12px;color:var(--muted);margin-top:18px;line-height:2}
+  .legend .k{display:inline-block;width:22px;border-bottom:2px solid;margin-right:8px;vertical-align:middle}
+
+  /* document */
+  .main{flex:1;overflow-y:auto;padding:34px 0 80px;position:relative}
+  .page{max-width:680px;margin:0 auto;background:var(--paper);border:1px solid var(--line);border-radius:6px;box-shadow:0 1px 3px rgba(0,0,0,.04);padding:54px 60px 70px;font-family:var(--serif)}
+  .court{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--muted);line-height:1.9;text-transform:uppercase}
+  .doc-title{text-align:center;font-size:21px;font-weight:600;margin:22px 0 6px}
+  .doc-sub{text-align:center;font-size:13px;color:var(--muted);font-family:var(--sans);margin-bottom:30px}
+  .gh{font-family:var(--sans);font-weight:600;font-size:13px;letter-spacing:.05em;text-transform:uppercase;color:var(--faint);margin:30px 0 12px}
+  .page p{font-size:16.5px;line-height:1.85;margin-bottom:16px;color:#26241F}
+
+  /* inline citation flags */
+  .cite{font-family:var(--mono);font-size:14px;cursor:pointer;border-radius:3px;padding:0 1px;transition:background .15s;white-space:nowrap}
+  .cite:hover{background:var(--line-soft)}
+  .cite.v{text-decoration:underline;text-decoration-color:var(--green-u);text-underline-offset:3px;text-decoration-thickness:2px}
+  .cite.m{text-decoration:underline wavy;text-decoration-color:var(--amber-u);text-underline-offset:3px}
+  .cite.n{text-decoration:underline wavy;text-decoration-color:var(--red-u);text-underline-offset:3px}
+  .cite.x{text-decoration:underline wavy;text-decoration-color:var(--violet-u);text-underline-offset:3px}
+  .cite.active{background:#FBF6E9;box-shadow:0 0 0 2px var(--amber-u)}
+  .cite.done{background:var(--green-bg);box-shadow:none;text-decoration-color:var(--green-u)}
+  del{color:var(--red);text-decoration:line-through;text-decoration-thickness:1px}
+  ins{color:var(--green);text-decoration:none;background:var(--green-bg);border-radius:2px;padding:0 2px}
+
+  /* right panel */
+  .panel{position:fixed;top:92px;right:0;width:412px;height:calc(100vh - 92px);background:var(--paper);border-left:1px solid var(--line);box-shadow:-8px 0 24px rgba(0,0,0,.05);transform:translateX(100%);transition:transform .26s cubic-bezier(.4,0,.2,1);overflow-y:auto;z-index:30}
+  .panel.open{transform:translateX(0)}
+  .pclose{position:absolute;top:16px;right:16px;width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px}
+  .pclose:hover{background:var(--line-soft)}
+  .pbody{padding:24px 24px 40px}
+  .verdict{display:inline-flex;align-items:center;gap:7px;font-weight:600;font-size:13px;padding:5px 11px;border-radius:20px;margin-bottom:14px}
+  .verdict .d{width:8px;height:8px;border-radius:50%}
+  .verdict.m{background:var(--amber-bg);color:var(--amber)} .verdict.m .d{background:var(--amber)}
+  .verdict.n{background:var(--red-bg);color:var(--red)} .verdict.n .d{background:var(--red)}
+  .verdict.v{background:var(--green-bg);color:var(--green)} .verdict.v .d{background:var(--green)}
+  .verdict.x{background:var(--violet-bg);color:var(--violet)} .verdict.x .d{background:var(--violet)}
+  .pcite{font-family:var(--mono);font-size:14px;font-weight:500;line-height:1.45;margin-bottom:4px}
+  .pissue{font-size:13px;color:var(--muted);margin-bottom:18px}
+  .oneliner{font-family:var(--serif);font-size:16px;line-height:1.5;margin-bottom:20px;padding-left:13px;border-left:2px solid var(--line)}
+  .oneliner b{font-weight:600}
+
+  .cvh{display:flex;gap:18px;margin-bottom:20px}
+  .cvh div .l{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:3px}
+  .cvh div .vv{font-size:14px;font-weight:600}
+  .conf-type{font-size:11px;color:var(--muted);font-weight:400}
+
+  .actions{display:flex;flex-direction:column;gap:9px;margin-bottom:8px}
+  .act{display:flex;align-items:center;justify-content:center;gap:8px;padding:11px;border-radius:9px;font-weight:600;font-size:14px}
+  .act-primary{background:var(--ink);color:#fff}
+  .act-primary:hover{background:#000}
+  .act-ghost{background:var(--paper);border:1px solid var(--line);color:var(--ink)}
+  .act-ghost:hover{border-color:var(--ink)}
+  .act-ev{background:none;color:var(--muted);font-weight:500;font-size:13px;padding:8px}
+  .act-ev:hover{color:var(--ink)}
+  .resolved-note{background:var(--green-bg);color:var(--green);border-radius:9px;padding:11px;font-size:13px;font-weight:500;text-align:center;display:none}
+
+  /* evidence layer */
+  .evidence{display:none;margin-top:8px;border-top:1px solid var(--line);padding-top:18px}
+  .evidence.show{display:block}
+  .axis{margin-bottom:18px}
+  .axis-head{display:flex;align-items:center;gap:8px;margin-bottom:7px}
+  .axis-tag{font-family:var(--mono);font-size:10.5px;font-weight:500;letter-spacing:.05em;padding:2px 7px;border-radius:5px;text-transform:uppercase}
+  .axis-tag.src{background:#EEF1F4;color:#3D5266}
+  .axis-tag.rsn{background:#F0EEF7;color:#544A86}
+  .axis-tag.sig{background:#F6F0EA;color:#8A5A2B}
+  .axis-q{font-size:12px;color:var(--faint)}
+  .axis-body{font-size:13.5px;line-height:1.6;color:#34322C}
+  .axis-body .sub{font-weight:600;color:var(--ink)}
+  .src-list{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+  .src-row{display:flex;align-items:center;gap:9px;font-size:12.5px;font-family:var(--mono)}
+  .src-row .st{margin-left:auto;font-weight:500}
+  .src-row .hit{color:var(--green)} .src-row .miss{color:var(--muted)}
+  .prov{margin-top:6px;font-size:12px;color:var(--muted);font-family:var(--mono);background:var(--line-soft);padding:8px 10px;border-radius:7px}
+
+  /* review queue */
+  .queue{max-width:920px;margin:0 auto;padding:0 24px}
+  .qhead{display:flex;align-items:baseline;gap:14px;margin-bottom:6px}
+  .qhead h1{font-size:24px;font-weight:600}
+  .qhead .meta{font-size:13px;color:var(--muted)}
+  .qsub{font-size:14px;color:var(--muted);margin-bottom:22px}
+  .qrow{display:flex;align-items:center;gap:16px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:15px 18px;margin-bottom:10px;cursor:pointer;transition:border-color .15s}
+  .qrow:hover{border-color:var(--ink)}
+  .qpri{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;flex:none;width:78px;text-align:center}
+  .qpri.crit{background:var(--red-bg);color:var(--red)}
+  .qpri.high{background:var(--amber-bg);color:var(--amber)}
+  .qpri.note{background:var(--violet-bg);color:var(--violet)}
+  .qrow .qmid{flex:1;min-width:0}
+  .qrow .qt{font-weight:600;font-size:14px;margin-bottom:2px}
+  .qrow .qc{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .qrow .qstatus{font-size:12px;color:var(--faint);flex:none}
+  .qrow.resolved{opacity:.55}
+  .qrow.resolved .qstatus{color:var(--green)}
+
+  /* toast + audit */
+  .toast{position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--ink);color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:9px;opacity:0;pointer-events:none;transition:all .3s;z-index:50}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  .toast .tk{color:#7FB89A}
+  .audit-fab{position:fixed;bottom:22px;left:22px;display:flex;align-items:center;gap:9px;background:var(--paper);border:1px solid var(--line);border-radius:30px;padding:9px 15px;font-size:12.5px;font-weight:500;box-shadow:0 2px 8px rgba(0,0,0,.06);z-index:40}
+  .audit-fab .ad{width:7px;height:7px;border-radius:50%;background:var(--green)}
+  .audit-fab b{font-family:var(--mono)}
+  .hide{display:none}
+  .mini{font-size:11px;color:var(--faint);font-style:italic}
+</style>
+</head>
+<body>
+<div class="demo-strip">Design prototype · static demo data · not connected to any live legal source — click any underlined citation</div>
+
+<div class="topbar">
+  <div class="brand"><span class="dots"><i></i><i></i><i></i></span> Consistency Check</div>
+  <div class="nav">
+    <button id="nav-doc" class="on" onclick="setView('doc')">Document</button>
+    <button id="nav-queue" onclick="setView('queue')">Review queue <span id="queue-badge" class="mini">· 7</span></button>
+  </div>
+  <div class="top-right">
+    <div class="role">
+      <button id="role-assoc" class="on" onclick="setRole('assoc')">Associate</button>
+      <button id="role-partner" onclick="setRole('partner')">Partner</button>
+    </div>
+    <button class="btn-report">↧ Report</button>
+  </div>
+</div>
+
+<div class="shell">
+  <!-- left context rail -->
+  <aside class="rail">
+    <div class="lab">Matter</div>
+    <div class="matter">
+      <div class="party">Veltros Industries Inc</div>
+      <div class="name">Crestholm Dynamics plc v Veltros Industries Inc</div>
+      <div class="clock"><span class="pulse"></span> 02:38:47 to filing</div>
+    </div>
+    <div class="progress-card">
+      <div class="row"><span class="big" id="prog-num">0/7</span><span class="sub">flags reviewed</span></div>
+      <div class="bar"><i id="prog-bar"></i></div>
+      <div class="filewrap">Ready to file <span class="lockpill" id="filepill">No</span></div>
+    </div>
+    <div class="lab" style="margin-top:6px">What the underlines mean</div>
+    <div class="legend">
+      <span class="k" style="border-color:var(--green-u)"></span>Verified — safe to rely on<br>
+      <span class="k" style="border-color:var(--amber-u);border-style:dashed"></span>Real, but misused<br>
+      <span class="k" style="border-color:var(--red-u);border-style:dashed"></span>Not found in any source<br>
+      <span class="k" style="border-color:var(--violet-u);border-style:dashed"></span>Real, found outside corpus
+    </div>
+  </aside>
+
+  <!-- document view -->
+  <div class="main" id="view-doc">
+    <div class="page" id="doc">
+      <div class="court">In the High Court of Justice<br>King's Bench Division · Commercial Court<br>Crestholm Dynamics plc v Veltros Industries Inc</div>
+      <div class="doc-title">Skeleton argument on behalf of the Claimant</div>
+      <div class="doc-sub">Alderton &amp; Marsh LLP · for the case management hearing on 14 May 2026</div>
+
+      <div class="gh">Ground 1 — Inducing breach of contract</div>
+      <p>The tort of inducing breach of contract has been recognised for over 170 years, its origins lying in <span class="cite v" data-id="lumley">Lumley v Gye (1853) 2 E&amp;B 216</span>. The modern statement of its elements is that of the House of Lords in <span class="cite v" data-id="obg">OBG Ltd v Allan [2007] UKHL 21</span>, which requires actual knowledge of the contract and an intention to procure its breach.</p>
+      <p>As to the mental element, the Claimant relies on <span class="cite v" data-id="dcthomson">DC Thomson &amp; Co Ltd v Deakin [1952] Ch 646</span>. In further support, the Claimant relies on <span class="ed" data-edit="fairfax"><span class="cite n" data-id="fairfax">Fairfax International Logistics Ltd v Brennan Holdings plc [2019] EWHC 1847 (Comm)</span>, in which Cockerill J held that a procurement conglomerate is to be treated as having intended the breach of any exclusivity obligation even where it had not read the contract</span>.</p>
+
+      <div class="gh">Ground 2 — Expectation damages for lost profits</div>
+      <p>The foundational rule on recoverability of damages was established in <span class="cite v" data-id="hadley">Hadley v Baxendale (1854) 9 Ex 341</span>, and the scope of recoverable loss in cases of deliberate commercial wrongdoing was considered in <span class="cite v" data-id="achilleas">Transfield Shipping Inc v Mercator Shipping Inc (The Achilleas) [2008] UKHL 48</span>.</p>
+      <p>As to the measure of damages, the Claimant relies on <span class="cite m" data-id="anglia">Anglia Television Ltd v Reed [1972] 1 QB 60</span>, <span class="ed" data-edit="anglia">under which the Claimant is entitled to recover, by way of <span class="claimtext">expectation damages, all profits it would have earned</span> had the contract been performed</span>. The Claimant further relies on <span class="ed" data-edit="stonegate"><span class="cite n" data-id="stonegate">Stonegate Capital Partners Ltd v Redwood Procurement Group [2021] EWHC 3312 (Ch)</span>, in which Marcus Smith J adopted financial projections as the primary basis for assessing lost future profits</span>.</p>
+      <p>Further and in the alternative, the Claimant relies on <span class="cite x" data-id="series5">Series 5 Software Ltd v Clarke [1996] 1 All ER 853</span> and on <span class="ed" data-edit="wrotham"><span class="cite m" data-id="wrotham">Wrotham Park Estate Co Ltd v Parkside Homes Ltd [1974] 1 WLR 798</span>, in support of <span class="claimtext">ordinary lost-profit damages</span> measured by the profits the Claimant would have earned</span>.</p>
+
+      <div class="gh">Ground 3 — Without-notice injunction</div>
+      <p>The principles governing interlocutory injunctions were restated in <span class="cite v" data-id="cyanamid">American Cyanamid Co v Ethicon Ltd [1975] AC 396</span>: the applicant need only show a serious question to be tried. In support of irreparable harm in aerospace procurement, the Claimant relies on <span class="ed" data-edit="pemberton"><span class="cite n" data-id="pemberton">Pemberton Aerospace Systems Ltd v Delta Global Ventures Inc [2023] EWHC 892 (TCC)</span>, in which O'Farrell J held that displacement of a long-term exclusive supplier constitutes irreparable harm</span>.</p>
+    </div>
+  </div>
+
+  <!-- review queue view -->
+  <div class="main hide" id="view-queue">
+    <div class="queue">
+      <div class="qhead"><h1>Review queue</h1><span class="meta" id="q-meta">7 flags · risk-ordered · est. 50 min to clear</span></div>
+      <div class="qsub">Work through the flags top-down. Each opens in the document with the suggested change ready to accept or dismiss — the partner keeps the final call.</div>
+      <div id="queue-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- right panel -->
+<div class="panel" id="panel">
+  <button class="pclose" onclick="closePanel()">×</button>
+  <div class="pbody" id="panel-body"></div>
+</div>
+
+<div class="audit-fab" onclick="toast('Audit trail records every flag, the evidence shown, and your decision — silently, as you work.')">
+  <span class="ad"></span> Audit recording · <b id="audit-count">1</b> events
+</div>
+<div class="toast" id="toast"><span class="tk">✓</span><span id="toast-text"></span></div>
+
+<script>
+const DATA = {
+  lumley:{v:'v',issue:'Tortious interference with contractual relations',cite:'Lumley v Gye (1853) 2 E&B 216',
+    one:'Real authority, correctly applied. The foundational inducing-breach case.',
+    conf:'96%',ct:'confirmed in corpus',risk:'Low',
+    src:'Verified against the primary judgment in the trusted corpus.',pin:'per Erle J',
+    sources:[['Provided UK corpus','hit'],['—','']]},
+  obg:{v:'v',issue:'Economic torts and unlawful means',cite:'OBG Ltd v Allan [2007] UKHL 21',
+    one:'Real authority, correctly applied. The modern HL statement of the tort.',conf:'94%',ct:'confirmed in corpus',risk:'Low',
+    src:'Verified against the primary judgment in the trusted corpus.',pin:'per Lord Hoffmann',sources:[['Provided UK corpus','hit']]},
+  dcthomson:{v:'v',issue:'Inducing breach of contract',cite:'DC Thomson & Co Ltd v Deakin [1952] Ch 646',
+    one:'Real authority, correctly applied.',conf:'91%',ct:'confirmed in corpus',risk:'Low',
+    src:'Verified against the primary judgment in the trusted corpus.',pin:'CA',sources:[['Provided UK corpus','hit']]},
+  hadley:{v:'v',issue:'Remoteness of contractual damages',cite:'Hadley v Baxendale (1854) 9 Ex 341',
+    one:'Real authority, correctly applied.',conf:'97%',ct:'confirmed in corpus',risk:'Low',
+    src:'Verified against the primary judgment in the trusted corpus.',pin:'per Alderson B',sources:[['Provided UK corpus','hit']]},
+  achilleas:{v:'v',issue:'Assumption of responsibility and remoteness',cite:'The Achilleas [2008] UKHL 48',
+    one:'Real authority, correctly applied.',conf:'92%',ct:'confirmed in corpus',risk:'Low',
+    src:'Verified against the primary judgment in the trusted corpus.',pin:'HL',sources:[['Provided UK corpus','hit']]},
+  cyanamid:{v:'v',issue:'Interim injunction test',cite:'American Cyanamid Co v Ethicon Ltd [1975] AC 396',
+    one:'Real authority, correctly applied — note the brief cites the AC report; corpus stores it as [1975] UKHL 1. Same case, resolved automatically.',
+    conf:'95%',ct:'confirmed in corpus',risk:'Low',
+    src:'Citation normalised: [1975] AC 396 and [1975] UKHL 1 resolve to the same primary judgment. Grounded against that judgment, not a later case citing it.',
+    pin:'per Lord Diplock',sources:[['Provided UK corpus','hit']]},
+
+  series5:{v:'x',issue:'Without-notice injunctions and urgency',cite:'Series 5 Software Ltd v Clarke [1996] 1 All ER 853',
+    one:'<b>Real case — but not in the firm corpus.</b> Found via an external source, so confirmed to exist. Not yet a deterministic match against a held judgment.',
+    conf:'84%',ct:'verified externally, not in corpus',risk:'Note',
+    src:'Absent from the trusted corpus. Located via CourtListener / open web — so it is <span class="sub">real, not fabricated</span>. We flag it as externally-verified rather than asserting it the way we do for corpus-held cases.',
+    pin:'Laddie J',
+    sources:[['Provided UK corpus','miss'],['CourtListener','hit'],['Perplexity (fallback)','hit']],
+    rsn:'Application looks sound on its face, but confirm the holding against the primary report before relying on it — we have not grounded it against a held judgment.',
+    sig:'<span class="sub">Why it could slip past review either way:</span> it reads as a clean, real citation — there is nothing on the page to tell a reviewer it sits outside the firm\'s vetted corpus. The flag exists precisely because the eye cannot catch this.'},
+
+  fairfax:{v:'n',issue:'Procurement conglomerate · intention to breach',cite:'Fairfax International Logistics Ltd v Brennan Holdings plc [2019] EWHC 1847 (Comm)',
+    one:'<b>Not found in any source checked.</b> Suspected fabrication — recommend the partner verify or remove before filing.',
+    conf:'—',ct:'absent from every source checked',risk:'Critical',
+    fix:true,fixlabel:'Remove unverified authority',
+    src:'No reliable source confirms this case exists. <span class="sub">Absent</span> from the trusted corpus, CourtListener, legislation.gov.uk and open-web search. We report this as <span class="sub">not found</span> — not a definitive "fabricated" — because no available source covers all English case law.',
+    pin:'—',
+    sources:[['Provided UK corpus','miss'],['CourtListener','miss'],['legislation.gov.uk','miss'],['Perplexity (fallback)','miss']],
+    rsn:'The proposition it is cited for — intention to breach inferred without reading the contract — also conflicts with OBG v Allan, which requires actual knowledge. The legal claim is suspect even setting existence aside.',
+    sig:'<span class="sub">Why it reads as plausible:</span> the citation format is impeccable, and the facts map suspiciously neatly onto this exact dispute (procurement · exclusive supply · aerospace). Authorities this conveniently on-point warrant extra scrutiny — uniform fluency hides the absence.'},
+
+  stonegate:{v:'n',issue:'Quantification of lost future profits',cite:'Stonegate Capital Partners Ltd v Redwood Procurement Group [2021] EWHC 3312 (Ch)',
+    one:'<b>Not found in any source checked.</b> Suspected fabrication.',conf:'—',ct:'absent from every source checked',risk:'Critical',
+    fix:true,fixlabel:'Remove unverified authority',
+    src:'No reliable source confirms this case. Absent from the corpus and all connected external sources.',pin:'—',
+    sources:[['Provided UK corpus','miss'],['CourtListener','miss'],['Perplexity (fallback)','miss']],
+    rsn:'Cited for a convenient quantum proposition with no traceable basis.',
+    sig:'<span class="sub">Why it reads as plausible:</span> plausible Chancery neutral citation, a named judge, and a proposition that fits the brief\'s needs precisely — convenient fit plus uniform fluency.'},
+
+  pemberton:{v:'n',issue:'Irreparable harm in aerospace procurement',cite:'Pemberton Aerospace Systems Ltd v Delta Global Ventures Inc [2023] EWHC 892 (TCC)',
+    one:'<b>Not found in any source checked.</b> Suspected fabrication.',conf:'—',ct:'absent from every source checked',risk:'Critical',
+    fix:true,fixlabel:'Remove unverified authority',
+    src:'No reliable source confirms this case. Absent from the corpus and all connected external sources.',pin:'—',
+    sources:[['Provided UK corpus','miss'],['CourtListener','miss'],['Perplexity (fallback)','miss']],
+    rsn:'Cited for a proposition that maps exactly onto Ground 3\'s facts.',
+    sig:'<span class="sub">Why it reads as plausible:</span> aerospace-procurement facts that mirror this dispute almost too perfectly — the strongest "convenient fit" tell in the document.'},
+
+  anglia:{v:'m',issue:'Reliance damages vs expectation damages',cite:'Anglia Television Ltd v Reed [1972] 1 QB 60',
+    one:'<b>Real case — used for the wrong proposition.</b> The brief cites it for expectation damages (lost profits); Anglia v Reed is the leading authority on <b>reliance loss</b> (wasted expenditure).',
+    conf:'88%',ct:'holding confirmed against primary judgment',risk:'High',
+    fix:true,fixlabel:'Accept suggested correction',
+    src:'The case exists and is correctly named — grounded against the <span class="sub">primary judgment</span> (per Lord Denning MR), not a later case citing it. It holds that a claimant may recover <span class="sub">wasted expenditure</span> where expectation loss cannot be proved.',
+    pin:'per Lord Denning MR',
+    sources:[['Provided UK corpus','hit']],
+    rsn:'The brief uses the authority for a <span class="sub">stronger proposition than it supports</span> — expectation/lost-profits, when the case is about reliance loss. That is a mischaracterisation, not a fabrication.',
+    sig:'<span class="sub">Why a reviewer would miss it:</span> the overreach is short-range and on-topic — Anglia v Reed genuinely is a damages case, and the brief shifts it only from reliance to expectation loss, neighbouring measures for the same breach. A reviewer who recognises it as "the damages case" nods it through without re-checking which measure it actually supports. <span class="sub">(scope drift + uniform fluency)</span>'},
+
+  wrotham:{v:'m',issue:'Negotiating damages vs ordinary lost profits',cite:'Wrotham Park Estate Co Ltd v Parkside Homes Ltd [1974] 1 WLR 798',
+    one:'<b>Real case — stretched too far.</b> Cited for ordinary lost-profit damages, but Wrotham Park is authority for <b>negotiating (release-fee) damages</b>, a distinct measure.',
+    conf:'81%',ct:'holding confirmed against primary judgment',risk:'High',
+    fix:true,fixlabel:'Accept suggested correction',
+    src:'Exists and correctly named, grounded against the primary judgment. It established negotiating damages — a hypothetical release fee — not recovery of the claimant\'s own lost profits.',
+    pin:'Ch D',
+    sources:[['Provided UK corpus','hit']],
+    rsn:'During verification we surfaced the modern restatement — <span class="sub">One Step (Support) Ltd v Morris-Garner [2018] UKSC 20</span> — which is the authority the brief should rely on for this proposition.',
+    sig:'<span class="sub">Why a reviewer would miss it:</span> "Wrotham Park damages" is a familiar phrase, so it reads as authoritative — but its precise scope (release fee, not lost profits) is exactly the kind of detail a fluency-based skim skips. <span class="sub">(scope drift)</span>'}
+};
+
+// fixed tracked-change HTML keyed by data-edit wrapper
+const FIXES = {
+  fairfax:'<del>In further support, the Claimant relies on Fairfax International Logistics Ltd v Brennan Holdings plc [2019] EWHC 1847 (Comm), in which Cockerill J held that a procurement conglomerate is to be treated as having intended the breach of any exclusivity obligation even where it had not read the contract</del> <ins>[unverified authority removed — no reliable source confirms this case; intention to breach in any event requires actual knowledge per OBG v Allan]</ins>',
+  stonegate:'<del>Stonegate Capital Partners Ltd v Redwood Procurement Group [2021] EWHC 3312 (Ch), in which Marcus Smith J adopted financial projections as the primary basis for assessing lost future profits</del> <ins>[unverified authority removed — no reliable source confirms this case]</ins>',
+  pemberton:'<del>Pemberton Aerospace Systems Ltd v Delta Global Ventures Inc [2023] EWHC 892 (TCC), in which O\'Farrell J held that displacement of a long-term exclusive supplier constitutes irreparable harm</del> <ins>[unverified authority removed — no reliable source confirms this case]</ins>',
+  anglia:'under which the Claimant is entitled to recover, by way of <del>expectation damages, all profits it would have earned</del> <ins>reliance damages for wasted expenditure, expectation loss being difficult to prove,</ins> had the contract been performed',
+  wrotham:'<span class="cite m" data-id="wrotham">Wrotham Park Estate Co Ltd v Parkside Homes Ltd [1974] 1 WLR 798</span>, in support of <del>ordinary lost-profit damages</del> <ins>negotiating damages, as restated in One Step (Support) Ltd v Morris-Garner [2018] UKSC 20,</ins> measured by the profits the Claimant would have earned'
+};
+
+const ORDER=[['fairfax','crit'],['stonegate','crit'],['pemberton','crit'],['anglia','high'],['wrotham','high'],['series5','note'],['cyanamid','note']];
+let resolved=new Set(), auditCount=1, role='assoc', view='doc', activeId=null;
+
+// click handler for inline citations
+document.querySelectorAll('.cite').forEach(el=>{
+  el.addEventListener('click',e=>{e.stopPropagation();openCite(el.dataset.id);});
+});
+
+function openCite(id){
+  activeId=id;
+  document.querySelectorAll('.cite').forEach(c=>c.classList.remove('active'));
+  const el=document.querySelector('.cite[data-id="'+id+'"]');
+  if(el && !resolved.has(id)) el.classList.add('active');
+  if(el) el.scrollIntoView({block:'center',behavior:'smooth'});
+  renderPanel(id);
+  document.getElementById('panel').classList.add('open');
+}
+function closePanel(){
+  document.getElementById('panel').classList.remove('open');
+  document.querySelectorAll('.cite').forEach(c=>c.classList.remove('active'));
+}
+
+function renderPanel(id){
+  const d=DATA[id]; const done=resolved.has(id);
+  const flagged=(d.v==='m'||d.v==='n');
+  let actions='';
+  if(done){
+    actions='<div class="resolved-note" style="display:block">✓ Reviewed — logged to audit trail</div>';
+  } else if(d.fix){
+    actions='<div class="actions">'
+      +'<button class="act act-primary" onclick="accept(\''+id+'\')">'+(d.v==='n'?'↧ ':'✓ ')+d.fixlabel+'</button>'
+      +'<button class="act act-ghost" onclick="dismiss(\''+id+'\')">Keep as written</button>'
+      +'<button class="act-ev" onclick="toggleEv()">See full evidence ▾</button></div>';
+  } else {
+    actions='<div class="actions">'
+      +'<button class="act act-ghost" onclick="dismiss(\''+id+'\')">Mark reviewed</button>'
+      +'<button class="act-ev" onclick="toggleEv()">See full evidence ▾</button></div>';
+  }
+
+  let ev='<div class="evidence" id="evidence"><div class="axis"><div class="axis-head"><span class="axis-tag src">Source</span><span class="axis-q">is the authority real &amp; current?</span></div><div class="axis-body">'+d.src+'</div>';
+  ev+='<div class="src-list">'+d.sources.filter(s=>s[0]!=='—').map(s=>'<div class="src-row"><span>'+(s[1]==='hit'?'●':'○')+'</span><span>'+s[0]+'</span><span class="st '+(s[1]==='hit'?'hit':'miss')+'">'+(s[1]==='hit'?'found':'not found')+'</span></div>').join('')+'</div>';
+  if(d.pin && d.pin!=='—') ev+='<div class="prov">grounded against primary judgment · '+d.pin+'</div>';
+  ev+='</div>';
+  if(d.rsn) ev+='<div class="axis"><div class="axis-head"><span class="axis-tag rsn">Reasoning</span><span class="axis-q">is the analysis sound?</span></div><div class="axis-body">'+d.rsn+'</div></div>';
+  if(d.sig) ev+='<div class="axis"><div class="axis-head"><span class="axis-tag sig">Signal</span><span class="axis-q">could a human catch it?</span></div><div class="axis-body">'+d.sig+'</div></div>';
+  ev+='</div>';
+
+  document.getElementById('panel-body').innerHTML=
+    '<div class="verdict '+d.v+'"><span class="d"></span>'+vlabel(d.v)+'</div>'
+    +'<div class="pcite">'+d.cite+'</div><div class="pissue">'+d.issue+'</div>'
+    +'<div class="oneliner">'+d.one+'</div>'
+    +'<div class="cvh"><div><div class="l">Confidence</div><div class="vv">'+d.conf+'</div><div class="conf-type">'+d.ct+'</div></div>'
+    +'<div><div class="l">Risk</div><div class="vv">'+d.risk+'</div></div></div>'
+    +actions+ev;
+}
+function vlabel(v){return {v:'Verified',m:'Real, but misused',n:'Not found in any source',x:'Real · found outside corpus'}[v];}
+
+function toggleEv(){const e=document.getElementById('evidence');if(e){e.classList.toggle('show');event.target.textContent=e.classList.contains('show')?'Hide evidence ▴':'See full evidence ▾';}}
+
+function accept(id){
+  const wrap=document.querySelector('.ed[data-edit="'+id+'"]');
+  if(wrap && FIXES[id]) wrap.innerHTML=FIXES[id];
+  finish(id, DATA[id].v==='n'?'Authority removed · tracked change inserted':'Correction applied · tracked change inserted');
+}
+function dismiss(id){ finish(id,'Kept as written · decision logged'); }
+
+function finish(id,msg){
+  resolved.add(id);
+  const el=document.querySelector('.cite[data-id="'+id+'"]');
+  if(el){el.classList.remove('active');el.classList.add('done');el.className=el.className.replace(/ (m|n|x) /,' ');}
+  auditCount++; document.getElementById('audit-count').textContent=auditCount;
+  updateProgress(); renderQueue(); renderPanel(id);
+  toast(msg);
+}
+
+function updateProgress(){
+  const total=7, n=[...resolved].filter(r=>['fairfax','stonegate','pemberton','anglia','wrotham','series5','cyanamid'].includes(r)).length;
+  document.getElementById('prog-num').textContent=n+'/'+total;
+  document.getElementById('prog-bar').style.width=(n/total*100)+'%';
+  document.getElementById('queue-badge').textContent='· '+(total-n);
+  const pill=document.getElementById('filepill');
+  if(n>=total){pill.textContent='Partner sign-off';pill.classList.add('go');}
+  else{pill.textContent='No';pill.classList.remove('go');}
+}
+
+function renderQueue(){
+  document.getElementById('queue-list').innerHTML=ORDER.map(([id,pri])=>{
+    const d=DATA[id]; const done=resolved.has(id);
+    const plabel={crit:'Critical',high:'High',note:'Note'}[pri];
+    return '<div class="qrow '+(done?'resolved':'')+'" onclick="setView(\'doc\');openCite(\''+id+'\')">'
+      +'<span class="qpri '+pri+'">'+plabel+'</span>'
+      +'<div class="qmid"><div class="qt">'+vlabel(d.v)+'</div><div class="qc">'+d.cite+'</div></div>'
+      +'<span class="qstatus">'+(done?'✓ reviewed':'open →')+'</span></div>';
+  }).join('');
+}
+
+function setView(v){
+  view=v;
+  document.getElementById('view-doc').classList.toggle('hide',v!=='doc');
+  document.getElementById('view-queue').classList.toggle('hide',v!=='queue');
+  document.getElementById('nav-doc').classList.toggle('on',v==='doc');
+  document.getElementById('nav-queue').classList.toggle('on',v==='queue');
+  if(v==='queue') closePanel();
+}
+function setRole(r){
+  role=r;
+  document.getElementById('role-assoc').classList.toggle('on',r==='assoc');
+  document.getElementById('role-partner').classList.toggle('on',r==='partner');
+  // role changes the DEFAULT surface, not the tabs
+  setView(r==='partner'?'queue':'doc');
+  toast(r==='partner'?'Partner mode — opens in the review queue for sign-off':'Associate mode — opens in the document for editing');
+}
+
+let toastTimer;
+function toast(msg){
+  document.getElementById('toast-text').textContent=msg;
+  const t=document.getElementById('toast');t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600);
+}
+
+renderQueue(); updateProgress();
+</script>
+</body>
+</html>

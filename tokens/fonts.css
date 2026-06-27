@@ -1,0 +1,9 @@
+/* ============================================================
+   Consistency Check — Webfonts
+   Proprietary originals: rb-freigeist-neue (display), basier-square (UI/body).
+   Licensed substitutes (flag to user): Bricolage Grotesque, Geist.
+   JetBrains Mono is the genuine article — used for all code / citations.
+   Loaded from Google Fonts CDN.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');

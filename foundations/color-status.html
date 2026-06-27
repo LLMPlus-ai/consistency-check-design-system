@@ -1,0 +1,27 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Verification & risk" subtitle="The only sanctioned functional hues" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--canvas); padding: 20px; }
+  .lbl { font: var(--overline); text-transform: uppercase; letter-spacing: 0.1em; color: var(--mute); margin: 0 0 8px; }
+  .row { display: flex; gap: 10px; margin-bottom: 16px; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 12px; border-radius: var(--radius-full); font: var(--caption-strong); }
+  .dot { width: 8px; height: 8px; border-radius: 50%; }
+</style></head>
+<body>
+  <div class="lbl">Verification verdict</div>
+  <div class="row">
+    <span class="pill" style="background: var(--verified-bg); color: var(--verified)"><span class="dot" style="background: var(--verified)"></span>Verified</span>
+    <span class="pill" style="background: var(--mischar-bg); color: var(--mischar)"><span class="dot" style="background: var(--mischar)"></span>Mischaracterised</span>
+    <span class="pill" style="background: var(--fabricated-bg); color: var(--fabricated)"><span class="dot" style="background: var(--fabricated)"></span>Fabricated</span>
+  </div>
+  <div class="lbl">Risk ladder</div>
+  <div class="row">
+    <span class="pill" style="background: var(--risk-low-bg); color: var(--risk-low)">Low</span>
+    <span class="pill" style="background: var(--risk-medium-bg); color: var(--risk-medium)">Medium</span>
+    <span class="pill" style="background: var(--risk-high-bg); color: var(--risk-high)">High</span>
+    <span class="pill" style="background: var(--risk-critical-bg); color: var(--risk-critical)">Critical</span>
+  </div>
+</body>
+</html>

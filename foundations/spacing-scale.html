@@ -1,0 +1,24 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Spacing scale" subtitle="4px base — generous on cream, tight in data" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--canvas); padding: 24px; color: var(--ink); }
+  .row { display: flex; align-items: flex-end; gap: 14px; }
+  .item { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .bar { background: var(--primary); border-radius: 2px; height: 56px; }
+  .t { font: var(--code-sm); color: var(--charcoal); }
+</style></head>
+<body>
+  <div class="row">
+    <div class="item"><div class="bar" style="width: 4px"></div><div class="t">xs 4</div></div>
+    <div class="item"><div class="bar" style="width: 8px"></div><div class="t">sm 8</div></div>
+    <div class="item"><div class="bar" style="width: 12px"></div><div class="t">md 12</div></div>
+    <div class="item"><div class="bar" style="width: 16px"></div><div class="t">lg 16</div></div>
+    <div class="item"><div class="bar" style="width: 24px"></div><div class="t">xl 24</div></div>
+    <div class="item"><div class="bar" style="width: 32px"></div><div class="t">xxl 32</div></div>
+    <div class="item"><div class="bar" style="width: 48px"></div><div class="t">xxxl 48</div></div>
+    <div class="item"><div class="bar" style="width: 96px; background: var(--ink)"></div><div class="t">section 96</div></div>
+  </div>
+</body>
+</html>

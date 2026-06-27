@@ -1,0 +1,15 @@
+/* ============================================================
+   Consistency Check — Elevation tokens
+   Elevation is colour-blocking first. Shadows are restrained:
+   reserved for floating panels (the finding detail drawer) and
+   hover-lifted thumbnails. Never decorative on flat cream.
+   ============================================================ */
+
+:root {
+  --elev-0: none;                                  /* flat canvas */
+  --elev-1: 0 1px 0 var(--hairline);               /* hairline seat */
+  --elev-card: 0 1px 2px rgba(32, 32, 32, 0.04);   /* card barely off canvas */
+  --elev-2: 0 8px 24px rgba(32, 32, 32, 0.08);     /* lifted thumbnail */
+  --elev-panel: -16px 0 48px rgba(32, 32, 32, 0.12); /* side drawer */
+  --elev-pop: 0 12px 32px rgba(32, 32, 32, 0.14);  /* popover / menu */
+}

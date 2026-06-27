@@ -1,0 +1,74 @@
+/* ============================================================
+   Consistency Check — Colour tokens
+   Replicate's warm-cream / ink / scarce-orange system, reframed
+   for a legal-AI verification product. Orange is a stamp, never
+   decoration. Verification + risk hues are functional semantics.
+   ============================================================ */
+
+:root {
+  /* --- Brand & accent --- */
+  --primary: #ea2804;          /* hot orange — the single brand stamp */
+  --primary-deep: #c01f00;     /* pressed / active orange */
+  --primary-soft: #fbe7e0;     /* faint orange wash for tints on cream */
+  --on-primary: #ffffff;
+  --hero-glow: #ff6a3d;
+  --hero-pink: #f4a8a0;
+
+  /* --- Surfaces --- */
+  --canvas: #f9f7f3;           /* default page background — warm cream */
+  --surface-bone: #f3f0e8;     /* half-step deeper cream, inset groups */
+  --surface-card: #ffffff;     /* white — only on cards, inputs, rows */
+  --surface-dark: #202020;     /* code wells, dark inversions, headers */
+  --surface-deep: #000000;     /* footer, tab strips */
+
+  /* --- Lines --- */
+  --hairline: rgba(32, 32, 32, 0.12);   /* low-contrast dividers on cream */
+  --hairline-soft: rgba(32, 32, 32, 0.07);
+  --hairline-strong: #202020;           /* button outlines, focus borders */
+  --divider-dark: rgba(255, 255, 255, 0.18);
+
+  /* --- Text --- */
+  --ink: #202020;              /* primary text, warmer than black */
+  --body: #3a3a3a;             /* long-form body copy */
+  --charcoal: #575757;         /* captions, metadata */
+  --mute: #646464;             /* supporting / inactive labels */
+  --ash: #8d8d8d;              /* tertiary text, placeholders */
+  --stone: #bbbbbb;            /* disabled foreground, neutral outlines */
+  --on-dark: #fcfcfc;
+  --on-dark-mute: rgba(252, 252, 252, 0.72);
+
+  /* --- Verification statuses (functional) --- */
+  --verified: #2b9a66;         /* exists + correctly applied */
+  --verified-bg: #e7f4ec;
+  --mischar: #b8730a;          /* exists but misstated — ochre/amber */
+  --mischar-bg: #f8efe0;
+  --fabricated: #c01f00;       /* no reliable authority found */
+  --fabricated-bg: #fbe5e0;
+
+  /* --- Risk scale (functional) --- */
+  --risk-low: #2b9a66;
+  --risk-medium: #b8730a;
+  --risk-high: #ea2804;
+  --risk-critical: #8b1500;
+  --risk-low-bg: #e7f4ec;
+  --risk-medium-bg: #f8efe0;
+  --risk-high-bg: #fbe7e0;
+  --risk-critical-bg: #f5ddd7;
+
+  /* --- Misc semantic --- */
+  --link: #ea2804;
+  --ring-focus: rgba(234, 40, 4, 0.32);
+  --success: #2b9a66;
+  --warning: #b8730a;
+  --danger: #c01f00;
+
+  /* --- Semantic surface aliases --- */
+  --bg-page: var(--canvas);
+  --bg-inset: var(--surface-bone);
+  --bg-card: var(--surface-card);
+  --text-strong: var(--ink);
+  --text-body: var(--body);
+  --text-muted: var(--charcoal);
+  --border-subtle: var(--hairline);
+  --border-strong: var(--hairline-strong);
+}

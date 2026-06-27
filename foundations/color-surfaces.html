@@ -1,0 +1,28 @@
+<!-- @dsCard group="Colors" viewport="700x150" name="Surfaces" subtitle="Cream canvas, bone, white, dark inversions" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--canvas); padding: 20px; display: flex; gap: 12px; }
+  .sw { flex: 1; border-radius: var(--radius-md); padding: 14px; border: 1px solid var(--hairline); min-height: 96px; display: flex; flex-direction: column; justify-content: space-between; }
+  .name { font: var(--caption-strong); }
+  .hex { font: var(--code-sm); opacity: 0.8; }
+</style></head>
+<body>
+  <div class="sw" style="background: var(--canvas); color: var(--ink);">
+    <div class="name">Canvas</div><div class="hex">#f9f7f3</div>
+  </div>
+  <div class="sw" style="background: var(--surface-bone); color: var(--ink);">
+    <div class="name">Surface bone</div><div class="hex">#f3f0e8</div>
+  </div>
+  <div class="sw" style="background: var(--surface-card); color: var(--ink);">
+    <div class="name">Surface card</div><div class="hex">#ffffff</div>
+  </div>
+  <div class="sw" style="background: var(--surface-dark); color: var(--on-dark); border-color: var(--surface-dark);">
+    <div class="name">Surface dark</div><div class="hex">#202020</div>
+  </div>
+  <div class="sw" style="background: var(--surface-deep); color: var(--on-dark); border-color: var(--surface-deep);">
+    <div class="name">Surface deep</div><div class="hex">#000000</div>
+  </div>
+</body>
+</html>

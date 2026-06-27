@@ -1,0 +1,20 @@
+<!-- @dsCard group="Colors" viewport="700x140" name="Text ramp" subtitle="Ink to stone — hierarchy without colour" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--canvas); padding: 20px; display: flex; gap: 10px; }
+  .sw { flex: 1; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+  .chip { width: 100%; height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--hairline); }
+  .name { font: var(--caption-strong); color: var(--ink); }
+  .hex { font: var(--code-sm); color: var(--ash); }
+</style></head>
+<body>
+  <div class="sw"><div class="chip" style="background: var(--ink)"></div><div class="name">Ink</div><div class="hex">#202020</div></div>
+  <div class="sw"><div class="chip" style="background: var(--body)"></div><div class="name">Body</div><div class="hex">#3a3a3a</div></div>
+  <div class="sw"><div class="chip" style="background: var(--charcoal)"></div><div class="name">Charcoal</div><div class="hex">#575757</div></div>
+  <div class="sw"><div class="chip" style="background: var(--mute)"></div><div class="name">Mute</div><div class="hex">#646464</div></div>
+  <div class="sw"><div class="chip" style="background: var(--ash)"></div><div class="name">Ash</div><div class="hex">#8d8d8d</div></div>
+  <div class="sw"><div class="chip" style="background: var(--stone)"></div><div class="name">Stone</div><div class="hex">#bbbbbb</div></div>
+</body>
+</html>

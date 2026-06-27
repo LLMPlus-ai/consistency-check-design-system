@@ -1,0 +1,30 @@
+/* ============================================================
+   Consistency Check — Spacing & radius tokens
+   4px base. Curves are intentional and soft.
+   ============================================================ */
+
+:root {
+  /* --- Spacing (4px base) --- */
+  --space-xxs: 2px;
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-xxxl: 48px;
+  --space-section: 96px;
+  --space-band: 160px;
+
+  /* --- Radius --- */
+  --radius-none: 0px;
+  --radius-xs: 4px;     /* tabs, inline chips in code wells */
+  --radius-sm: 6px;     /* small inset chips, callouts */
+  --radius-md: 10px;    /* cards, table shells, code wells */
+  --radius-lg: 16px;    /* large feature cards, panels */
+  --radius-full: 9999px; /* buttons, inputs, badges, pills, avatars */
+
+  /* --- Containers --- */
+  --container-max: 1280px;
+  --container-wide: 1440px;
+}

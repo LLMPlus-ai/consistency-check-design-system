@@ -1,0 +1,42 @@
+/* ============================================================
+   Consistency Check — Typography tokens
+   Three families, three jobs, no overlap:
+   display (Bricolage Grotesque) · UI/body (Geist) · code (JetBrains Mono)
+   ============================================================ */
+
+:root {
+  /* --- Families --- */
+  --font-display: 'Bricolage Grotesque', 'Migra', Georgia, serif;
+  --font-sans: 'Geist', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SFMono-Regular', Menlo, monospace;
+
+  /* --- Display (Bricolage) — tight stacks, negative tracking --- */
+  --display-xxl: 700 128px/1.0 var(--font-display);
+  --display-xl: 700 72px/1.0 var(--font-display);
+  --display-lg: 700 48px/1.0 var(--font-display);
+  --display-md: 600 30px/1.2 var(--font-display);
+  --tracking-display-xxl: -3px;
+  --tracking-display-xl: -1.8px;
+  --tracking-display-lg: -1px;
+  --tracking-display-md: -0.5px;
+
+  /* --- Headings (Geist) --- */
+  --heading-lg: 600 38px/0.92 var(--font-sans);
+  --heading-md: 600 24px/1.33 var(--font-sans);
+  --heading-sm: 600 20px/1.4 var(--font-sans);
+
+  /* --- Body & UI (Geist) --- */
+  --subtitle: 600 18px/1.56 var(--font-display);
+  --body-lg: 400 18px/1.56 var(--font-sans);
+  --body-md: 400 16px/1.5 var(--font-sans);
+  --body-sm: 400 14px/1.43 var(--font-sans);
+  --button-md: 600 16px/1.0 var(--font-sans);
+  --button-sm: 600 14px/1.0 var(--font-sans);
+  --caption: 400 12px/1.33 var(--font-sans);
+  --caption-strong: 600 13px/1.4 var(--font-sans);
+  --overline: 600 11px/1.4 var(--font-sans); /* uppercase + tracking in use */
+
+  /* --- Code (JetBrains Mono) — citations, slugs, refs --- */
+  --code-md: 400 14px/1.43 var(--font-mono);
+  --code-sm: 400 12px/1.5 var(--font-mono);
+}

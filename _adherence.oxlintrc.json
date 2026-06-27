@@ -1,0 +1,367 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "components/forms/**",
+              "components/status/**",
+              "components/surfaces/**",
+              "ui_kits/consistency-check/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:Bricolage Grotesque|Geist|JetBrains Mono))/i]",
+        "message": "Font not provided by the design system. Available: Bricolage Grotesque, Geist, JetBrains Mono."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute > JSXIdentifier[name!=/^(?:name|size|tone|style|key|ref|className|style|children)$/]",
+        "message": "<Avatar> doesn't accept that prop. Declared props: name, size, tone, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Avatar'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:bone|dark|primary)$/]",
+        "message": "<Avatar> tone must be one of 'bone' | 'dark' | 'primary'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|type|disabled|fullWidth|iconLeft|iconRight|children|style|onClick|key|ref|className|style|children)$/]",
+        "message": "<Button> doesn't accept that prop. Declared props: variant, size, type, disabled, fullWidth, iconLeft, iconRight, children, style, onClick."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Button'] > JSXAttribute[name.name='type'] > Literal[value!=/^(?:button|submit|reset)$/]",
+        "message": "<Button> type must be one of 'button' | 'submit' | 'reset'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute > JSXIdentifier[name!=/^(?:tone|pad|radius|interactive|children|style|key|ref|className|style|children)$/]",
+        "message": "<Card> doesn't accept that prop. Declared props: tone, pad, radius, interactive, children, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Card'] > JSXAttribute[name.name='tone'] > Literal[value!=/^(?:card|bone|dark)$/]",
+        "message": "<Card> tone must be one of 'card' | 'bone' | 'dark'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='FilterChip'] > JSXAttribute > JSXIdentifier[name!=/^(?:active|count|dotColor|children|style|onClick|key|ref|className|style|children)$/]",
+        "message": "<FilterChip> doesn't accept that prop. Declared props: active, count, dotColor, children, style, onClick."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='HealthMeter'] > JSXAttribute > JSXIdentifier[name!=/^(?:score|max|size|label|valueColor|subColor|labelColor|trackColor|style|key|ref|className|style|children)$/]",
+        "message": "<HealthMeter> doesn't accept that prop. Declared props: score, max, size, label, valueColor, subColor, labelColor, trackColor, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='IconButton'] > JSXAttribute > JSXIdentifier[name!=/^(?:variant|size|ariaLabel|children|style|onClick|key|ref|className|style|children)$/]",
+        "message": "<IconButton> doesn't accept that prop. Declared props: variant, size, ariaLabel, children, style, onClick."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='IconButton'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:outline|bare|dark)$/]",
+        "message": "<IconButton> variant must be one of 'outline' | 'bare' | 'dark'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute > JSXIdentifier[name!=/^(?:size|iconLeft|type|placeholder|value|defaultValue|onChange|style|wrapStyle|key|ref|className|style|children)$/]",
+        "message": "<Input> doesn't accept that prop. Declared props: size, iconLeft, type, placeholder, value, defaultValue, onChange, style, wrapStyle."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='Input'] > JSXAttribute[name.name='size'] > Literal[value!=/^(?:md|sm)$/]",
+        "message": "<Input> size must be one of 'md' | 'sm'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='RiskBadge'] > JSXAttribute > JSXIdentifier[name!=/^(?:level|variant|style|key|ref|className|style|children)$/]",
+        "message": "<RiskBadge> doesn't accept that prop. Declared props: level, variant, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='RiskBadge'] > JSXAttribute[name.name='variant'] > Literal[value!=/^(?:pill|bar)$/]",
+        "message": "<RiskBadge> variant must be one of 'pill' | 'bar'."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='StatCard'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|caption|accent|style|key|ref|className|style|children)$/]",
+        "message": "<StatCard> doesn't accept that prop. Declared props: value, label, caption, accent, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='StatusBadge'] > JSXAttribute > JSXIdentifier[name!=/^(?:status|solid|style|key|ref|className|style|children)$/]",
+        "message": "<StatusBadge> doesn't accept that prop. Declared props: status, solid, style."
+      },
+      {
+        "selector": "JSXOpeningElement[name.name='TabItem'] > JSXAttribute > JSXIdentifier[name!=/^(?:value|label|key|ref|className|style|children)$/]",
+        "message": "<TabItem> doesn't accept that prop. Declared props: value, label."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {
+      "Avatar": {
+        "replaces": []
+      },
+      "Button": {
+        "replaces": []
+      },
+      "Card": {
+        "replaces": []
+      },
+      "FilterChip": {
+        "replaces": []
+      },
+      "HealthMeter": {
+        "replaces": []
+      },
+      "IconButton": {
+        "replaces": []
+      },
+      "Input": {
+        "replaces": []
+      },
+      "RiskBadge": {
+        "replaces": []
+      },
+      "StatCard": {
+        "replaces": []
+      },
+      "StatusBadge": {
+        "replaces": []
+      },
+      "TabItem": {
+        "replaces": []
+      }
+    },
+    "tokens": [
+      "--ash",
+      "--bg-card",
+      "--bg-inset",
+      "--bg-page",
+      "--body",
+      "--body-lg",
+      "--body-md",
+      "--body-sm",
+      "--border-strong",
+      "--border-subtle",
+      "--button-md",
+      "--button-sm",
+      "--canvas",
+      "--caption",
+      "--caption-strong",
+      "--charcoal",
+      "--code-md",
+      "--code-sm",
+      "--container-max",
+      "--container-wide",
+      "--danger",
+      "--display-lg",
+      "--display-md",
+      "--display-xl",
+      "--display-xxl",
+      "--divider-dark",
+      "--elev-0",
+      "--elev-1",
+      "--elev-2",
+      "--elev-card",
+      "--elev-panel",
+      "--elev-pop",
+      "--fabricated",
+      "--fabricated-bg",
+      "--font-display",
+      "--font-mono",
+      "--font-sans",
+      "--hairline",
+      "--hairline-soft",
+      "--hairline-strong",
+      "--heading-lg",
+      "--heading-md",
+      "--heading-sm",
+      "--hero-glow",
+      "--hero-pink",
+      "--ink",
+      "--link",
+      "--mischar",
+      "--mischar-bg",
+      "--mute",
+      "--on-dark",
+      "--on-dark-mute",
+      "--on-primary",
+      "--overline",
+      "--primary",
+      "--primary-deep",
+      "--primary-soft",
+      "--radius-full",
+      "--radius-lg",
+      "--radius-md",
+      "--radius-none",
+      "--radius-sm",
+      "--radius-xs",
+      "--ring-focus",
+      "--risk-critical",
+      "--risk-critical-bg",
+      "--risk-high",
+      "--risk-high-bg",
+      "--risk-low",
+      "--risk-low-bg",
+      "--risk-medium",
+      "--risk-medium-bg",
+      "--space-band",
+      "--space-lg",
+      "--space-md",
+      "--space-section",
+      "--space-sm",
+      "--space-xl",
+      "--space-xs",
+      "--space-xxl",
+      "--space-xxs",
+      "--space-xxxl",
+      "--stone",
+      "--subtitle",
+      "--success",
+      "--surface-bone",
+      "--surface-card",
+      "--surface-dark",
+      "--surface-deep",
+      "--text-body",
+      "--text-muted",
+      "--text-strong",
+      "--tracking-display-lg",
+      "--tracking-display-md",
+      "--tracking-display-xl",
+      "--tracking-display-xxl",
+      "--verified",
+      "--verified-bg",
+      "--warning"
+    ],
+    "tokenKinds": {
+      "--primary": "color",
+      "--primary-deep": "color",
+      "--primary-soft": "color",
+      "--on-primary": "color",
+      "--hero-glow": "color",
+      "--hero-pink": "color",
+      "--canvas": "color",
+      "--surface-bone": "color",
+      "--surface-card": "color",
+      "--surface-dark": "color",
+      "--surface-deep": "color",
+      "--hairline": "color",
+      "--hairline-soft": "color",
+      "--hairline-strong": "color",
+      "--divider-dark": "color",
+      "--ink": "color",
+      "--body": "color",
+      "--charcoal": "color",
+      "--mute": "color",
+      "--ash": "color",
+      "--stone": "color",
+      "--on-dark": "color",
+      "--on-dark-mute": "color",
+      "--verified": "color",
+      "--verified-bg": "color",
+      "--mischar": "color",
+      "--mischar-bg": "color",
+      "--fabricated": "color",
+      "--fabricated-bg": "color",
+      "--risk-low": "color",
+      "--risk-medium": "color",
+      "--risk-high": "color",
+      "--risk-critical": "color",
+      "--risk-low-bg": "color",
+      "--risk-medium-bg": "color",
+      "--risk-high-bg": "color",
+      "--risk-critical-bg": "color",
+      "--link": "color",
+      "--ring-focus": "color",
+      "--success": "color",
+      "--warning": "color",
+      "--danger": "color",
+      "--bg-page": "color",
+      "--bg-inset": "color",
+      "--bg-card": "color",
+      "--text-strong": "font",
+      "--text-body": "font",
+      "--text-muted": "font",
+      "--border-subtle": "color",
+      "--border-strong": "color",
+      "--font-display": "font",
+      "--font-sans": "font",
+      "--font-mono": "font",
+      "--display-xxl": "color",
+      "--display-xl": "color",
+      "--display-lg": "color",
+      "--display-md": "color",
+      "--tracking-display-xxl": "font",
+      "--tracking-display-xl": "font",
+      "--tracking-display-lg": "font",
+      "--tracking-display-md": "font",
+      "--heading-lg": "color",
+      "--heading-md": "color",
+      "--heading-sm": "color",
+      "--subtitle": "color",
+      "--body-lg": "color",
+      "--body-md": "color",
+      "--body-sm": "color",
+      "--button-md": "color",
+      "--button-sm": "color",
+      "--caption": "color",
+      "--caption-strong": "color",
+      "--overline": "color",
+      "--code-md": "color",
+      "--code-sm": "color",
+      "--space-xxs": "spacing",
+      "--space-xs": "spacing",
+      "--space-sm": "spacing",
+      "--space-md": "spacing",
+      "--space-lg": "spacing",
+      "--space-xl": "spacing",
+      "--space-xxl": "spacing",
+      "--space-xxxl": "spacing",
+      "--space-section": "spacing",
+      "--space-band": "spacing",
+      "--radius-none": "radius",
+      "--radius-xs": "radius",
+      "--radius-sm": "radius",
+      "--radius-md": "radius",
+      "--radius-lg": "radius",
+      "--radius-full": "radius",
+      "--container-max": "spacing",
+      "--container-wide": "spacing",
+      "--elev-0": "shadow",
+      "--elev-1": "shadow",
+      "--elev-card": "shadow",
+      "--elev-2": "shadow",
+      "--elev-panel": "shadow",
+      "--elev-pop": "shadow"
+    },
+    "fontFamilies": [
+      "Bricolage Grotesque",
+      "Geist",
+      "JetBrains Mono"
+    ]
+  }
+}

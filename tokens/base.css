@@ -1,0 +1,54 @@
+/* ============================================================
+   Consistency Check — Base resets & helpers
+   Light-touch: a warm-cream canvas, ink type, sensible defaults.
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font: var(--body-md);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+a {
+  color: var(--link);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Display helper — applies the tight tracking that pairs with each size */
+.cc-display-xxl { font: var(--display-xxl); letter-spacing: var(--tracking-display-xxl); }
+.cc-display-xl  { font: var(--display-xl);  letter-spacing: var(--tracking-display-xl); }
+.cc-display-lg  { font: var(--display-lg);  letter-spacing: var(--tracking-display-lg); }
+.cc-display-md  { font: var(--display-md);  letter-spacing: var(--tracking-display-md); }
+
+/* Overline / eyebrow label — used above section titles */
+.cc-overline {
+  font: var(--overline);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--mute);
+}
+
+/* Mono helper for citations & case slugs */
+.cc-mono { font: var(--code-md); }
+
+:focus-visible {
+  outline: 3px solid var(--ring-focus);
+  outline-offset: 1px;
+}

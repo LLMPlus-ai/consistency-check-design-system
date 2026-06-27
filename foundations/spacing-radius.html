@@ -1,0 +1,22 @@
+<!-- @dsCard group="Spacing" viewport="700x150" name="Radius scale" subtitle="Interactive = full pill · cards = md/lg · never sharp" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--canvas); padding: 24px; }
+  .row { display: flex; gap: 16px; align-items: flex-end; }
+  .item { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+  .box { width: 84px; height: 60px; background: var(--surface-card); border: 1px solid var(--hairline-strong); }
+  .t { font: var(--code-sm); color: var(--charcoal); }
+  .pill { width: 110px; height: 44px; display: flex; align-items: center; justify-content: center; background: var(--primary); color: var(--on-primary); border-radius: var(--radius-full); font: var(--button-sm); }
+</style></head>
+<body>
+  <div class="row">
+    <div class="item"><div class="box" style="border-radius: var(--radius-xs)"></div><div class="t">xs 4</div></div>
+    <div class="item"><div class="box" style="border-radius: var(--radius-sm)"></div><div class="t">sm 6</div></div>
+    <div class="item"><div class="box" style="border-radius: var(--radius-md)"></div><div class="t">md 10 · cards</div></div>
+    <div class="item"><div class="box" style="border-radius: var(--radius-lg)"></div><div class="t">lg 16 · panels</div></div>
+    <div class="item"><div class="pill">full · buttons</div><div class="t">9999</div></div>
+  </div>
+</body>
+</html>

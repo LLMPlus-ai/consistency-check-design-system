@@ -1,0 +1,21 @@
+<!-- @dsCard group="Brand" viewport="700x180" name="Voice" subtitle="Calm, precise, institutional — verdicts and actions" -->
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8" /><link rel="stylesheet" href="../styles.css" />
+<style>
+  body { margin: 0; background: var(--canvas); padding: 22px; color: var(--ink); }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cell { background: var(--surface-card); border: 1px solid var(--hairline); border-radius: var(--radius-md); padding: 14px 16px; }
+  .k { font: var(--overline); text-transform: uppercase; letter-spacing: 0.1em; color: var(--mute); margin-bottom: 6px; }
+  .v { font: var(--body-sm); color: var(--body); }
+  .do { color: var(--verified); } .dont { color: var(--fabricated); }
+</style></head>
+<body>
+  <div class="grid">
+    <div class="cell"><div class="k">System states what it did</div><div class="v">"12 citations extracted from skeleton argument."</div></div>
+    <div class="cell"><div class="k">Verdicts are unambiguous</div><div class="v">"No reliable authority found. Treat as a likely AI hallucination."</div></div>
+    <div class="cell"><div class="k">Actions are verbs</div><div class="v">"Revise legal proposition." · "Remove or replace citation."</div></div>
+    <div class="cell"><div class="k">Do / Don't</div><div class="v"><span class="do">✓ "Mischaracterised — supports reliance, not expectation loss."</span><br/><span class="dont">✕ "This citation might be a little off."</span></div></div>
+  </div>
+</body>
+</html>

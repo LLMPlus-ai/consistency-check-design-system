@@ -1,0 +1,16 @@
+{
+  "name": "consistency-check-fullstack",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Legal AI Citation Verification & Supervision System — fully connected front-end + back-end (zero runtime dependencies).",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node server/index.js",
+    "reset": "curl -s -X POST http://localhost:4000/api/reset",
+    "smoke": "node server/smoke-test.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
