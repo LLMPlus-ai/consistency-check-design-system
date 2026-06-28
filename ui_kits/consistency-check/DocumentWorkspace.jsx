@@ -575,23 +575,73 @@ function ReportGuidance({ app, sel, setSel, guideRef, guideItemRefs }) {
   );
 }
 
-/* ---- uploaded real document view ---- */
+/* ---- uploaded real document view — live citation verification ---- */
+const UD_META = {
+  Verified: { hue: 'var(--verified)', bg: 'var(--verified-bg)', soft: 'rgba(43,154,102,0.12)', icon: 'shield-check', label: 'Verified' },
+  Mischaracterised: { hue: 'var(--mischar)', bg: 'var(--mischar-bg, var(--risk-high-bg))', soft: 'rgba(184,115,10,0.14)', icon: 'circle-slash', label: 'Mischaracterised' },
+  Fabricated: { hue: 'var(--fabricated)', bg: 'var(--fabricated-bg)', soft: 'rgba(192,31,0,0.12)', icon: 'shield-alert', label: 'Not found' },
+  Unverified: { hue: 'var(--stone)', bg: 'var(--surface-bone)', soft: 'var(--surface-bone)', icon: 'help-circle', label: 'Unverified' },
+};
+
 function UploadedDoc({ app }) {
+  const { useState: uS, useEffect: uE, useRef: uR } = React;
   const doc = app.uploadedDoc;
   const cites = doc.citations || [];
+  const online = !!(app.backend && app.backend.connected) && !!window.CCApi;
+  const fullText = (doc.pages || []).join('\n');
+  const [results, setResults] = uS({});   // cite -> result | {pending} | {error}
+  const [running, setRunning] = uS(false);
+  const [openId, setOpenId] = uS(null);
+  const started = uR(false);
+
+  // The sentence around a citation — passed to the model so it can judge whether
+  // the proposition matches the holding (mischaracterisation), not just existence.
+  const propositionFor = (cite) => {
+    const idx = fullText.indexOf(cite);
+    if (idx < 0) return '';
+    let start = fullText.lastIndexOf('.', idx); start = start < 0 ? 0 : start + 1;
+    let end = fullText.indexOf('.', idx + cite.length); end = end < 0 ? fullText.length : end + 1;
+    return fullText.slice(start, end).replace(/\s+/g, ' ').trim().slice(0, 320);
+  };
+
+  const verifyAll = async () => {
+    if (!online || !cites.length || running) return;
+    setRunning(true);
+    for (const c of cites) {
+      setResults((r) => ({ ...r, [c]: { pending: true } }));
+      try {
+        const res = await window.CCApi.llmVerify({ citation: c, proposition: propositionFor(c) });
+        setResults((r) => ({ ...r, [c]: res }));
+      } catch (e) {
+        setResults((r) => ({ ...r, [c]: { error: e.message } }));
+      }
+    }
+    setRunning(false);
+    if (app.pushSync) app.pushSync();
+  };
+
+  uE(() => { if (online && cites.length && !started.current) { started.current = true; verifyAll(); } }, []);
+
+  const metaOf = (c) => { const r = results[c]; if (!r || r.pending || r.error) return null; return UD_META[r.status] || UD_META.Unverified; };
+  const tally = cites.reduce((a, c) => { const r = results[c]; if (r && r.status) a[r.status] = (a[r.status] || 0) + 1; return a; }, {});
+  const verifiedN = tally.Verified || 0, mischarN = tally.Mischaracterised || 0, fabN = tally.Fabricated || 0;
+  const completed = cites.filter((c) => { const r = results[c]; return r && !r.pending; }).length;
+
   const highlight = (text) => {
     if (!cites.length) return text;
-    const parts = []; let rest = text; let key = 0;
+    const parts = []; let key = 0;
     const re = new RegExp('(' + cites.map((c) => c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'g');
     let last = 0, m;
     while ((m = re.exec(text))) {
       if (m.index > last) parts.push(text.slice(last, m.index));
-      parts.push(<span key={key++} style={{ background: 'var(--primary-soft)', color: 'var(--primary-deep)', borderRadius: 3, padding: '0 3px', fontWeight: 600 }}>{m[0]}</span>);
+      const mt = metaOf(m[0]);
+      parts.push(<span key={key++} title={mt ? mt.label : 'detected citation'} style={{ background: mt ? mt.soft : 'var(--primary-soft)', color: mt ? mt.hue : 'var(--primary-deep)', borderRadius: 3, padding: '0 3px', fontWeight: 600, borderBottom: mt ? '2px solid ' + mt.hue : 'none' }}>{m[0]}</span>);
       last = m.index + m[0].length;
     }
     if (last < text.length) parts.push(text.slice(last));
     return parts;
   };
+
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 0, alignItems: 'stretch', height: 'calc(100vh - 232px)', minHeight: 540, border: '1px solid var(--hairline)', borderRadius: 'var(--radius-md)', overflow: 'hidden', boxShadow: 'var(--elev-card)' }}>
       <div style={{ overflowY: 'auto', background: '#efece6', padding: '22px 22px 60px' }}>
@@ -603,18 +653,71 @@ function UploadedDoc({ app }) {
         ))}
       </div>
       <div style={{ background: 'var(--surface-card)', borderLeft: '1px solid var(--hairline)', overflowY: 'auto', padding: 16 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><WIcon name="file-check-2" size={16} style={{ color: 'var(--verified)' }} /><span style={{ font: 'var(--heading-sm)', fontSize: 15, color: 'var(--ink)' }}>Parsed document</span></div>
-        <div style={{ font: 'var(--body-sm)', color: 'var(--mute)', marginTop: 6 }}>{doc.name} · {(doc.pages || []).length} page{(doc.pages || []).length === 1 ? '' : 's'} · text extracted in-browser.</div>
-        <div style={{ marginTop: 14 }}><WOverline>Citations detected · {cites.length}</WOverline>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 8 }}>
-            {cites.length ? cites.map((c, i) => <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, font: 'var(--code-sm)', color: 'var(--ink)' }}><WIcon name="quote" size={12} style={{ color: 'var(--primary-deep)', flex: '0 0 auto' }} />{c}</div>)
-              : <div style={{ font: 'var(--body-sm)', color: 'var(--mute)' }}>No case-name citations detected in the extracted text.</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}><WIcon name="file-check-2" size={16} style={{ color: 'var(--verified)' }} /><span style={{ font: 'var(--heading-sm)', fontSize: 15, color: 'var(--ink)' }}>{doc.name}</span></div>
+        <div style={{ font: 'var(--body-sm)', color: 'var(--mute)', marginTop: 6 }}>{(doc.pages || []).length} page{(doc.pages || []).length === 1 ? '' : 's'} · {cites.length} citation{cites.length === 1 ? '' : 's'} detected · parsed in-browser.</div>
+
+        {/* live verification summary */}
+        {online && cites.length > 0 && (
+          <div style={{ marginTop: 14, padding: '12px 13px', borderRadius: 'var(--radius-md)', border: '1px solid var(--hairline)', background: 'var(--canvas)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+              <span style={{ font: 'var(--overline)', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--mute)' }}>Live verification</span>
+              {running ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, font: 'var(--code-sm)', color: 'var(--charcoal)' }}><WIcon name="loader" size={12} /> {completed}/{cites.length}</span>
+                : <button onClick={verifyAll} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, font: 'var(--code-sm)', color: 'var(--primary-deep)', background: 'transparent', border: 'none', cursor: 'pointer' }}><WIcon name="refresh-cw" size={12} /> re-run</button>}
+            </div>
+            <div style={{ display: 'flex', gap: 12, marginTop: 9, font: 'var(--code-sm)', flexWrap: 'wrap' }}>
+              <span style={{ color: 'var(--verified)' }}>● {verifiedN} verified</span>
+              <span style={{ color: 'var(--mischar)' }}>● {mischarN} mischaracterised</span>
+              <span style={{ color: 'var(--fabricated)' }}>● {fabN} not found</span>
+            </div>
+            <div style={{ font: 'var(--code-sm)', color: 'var(--ash)', marginTop: 8 }}>corpus → Perplexity → NVIDIA Nemotron</div>
+          </div>
+        )}
+
+        {/* per-citation verdicts */}
+        <div style={{ marginTop: 14 }}><WOverline>Citations · {cites.length}</WOverline>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {!cites.length && <div style={{ font: 'var(--body-sm)', color: 'var(--mute)' }}>No case-name citations detected in the extracted text.</div>}
+            {cites.map((c, i) => {
+              const r = results[c]; const mt = metaOf(c); const isOpen = openId === c;
+              return (
+                <div key={i} style={{ border: '1px solid var(--hairline)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+                  <div onClick={() => setOpenId(isOpen ? null : c)} style={{ display: 'flex', alignItems: 'flex-start', gap: 9, padding: '10px 11px', cursor: r && !r.pending ? 'pointer' : 'default' }}>
+                    <WIcon name={mt ? mt.icon : (r && r.pending ? 'loader' : (r && r.error ? 'alert-triangle' : 'quote'))} size={14} style={{ marginTop: 2, flex: '0 0 auto', color: mt ? mt.hue : (r && r.error ? 'var(--fabricated)' : 'var(--stone)') }} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ font: 'var(--code-sm)', color: 'var(--ink)', lineHeight: 1.4 }}>{c}</div>
+                      {mt && <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 5 }}>
+                        <span style={{ font: 'var(--code-sm)', color: mt.hue, background: mt.soft, borderRadius: 'var(--radius-full)', padding: '1px 8px' }}>{mt.label}</span>
+                        {typeof r.confidence === 'number' && <span style={{ font: 'var(--code-sm)', color: 'var(--ash)' }}>{r.confidence}%</span>}
+                      </div>}
+                      {r && r.pending && <div style={{ font: 'var(--code-sm)', color: 'var(--mute)', marginTop: 4 }}>verifying…</div>}
+                      {r && r.error && <div style={{ font: 'var(--code-sm)', color: 'var(--fabricated)', marginTop: 4 }}>error: {r.error}</div>}
+                      {!r && !online && <div style={{ font: 'var(--code-sm)', color: 'var(--mute)', marginTop: 4 }}>connect the API to verify</div>}
+                    </div>
+                    {r && !r.pending && !r.error && <WIcon name={isOpen ? 'chevron-up' : 'chevron-down'} size={14} style={{ color: 'var(--stone)', flex: '0 0 auto' }} />}
+                  </div>
+                  {isOpen && r && r.explanation && (
+                    <div style={{ padding: '0 12px 12px 34px', borderTop: '1px solid var(--hairline)' }}>
+                      <div style={{ font: 'var(--body-sm)', color: 'var(--body)', lineHeight: 1.5, margin: '10px 0' }}>{r.explanation}</div>
+                      {(r.trace || []).map((t, k) => (
+                        <div key={k} style={{ display: 'flex', gap: 8, font: 'var(--code-sm)', color: 'var(--mute)', marginTop: 3 }}>
+                          <span style={{ color: 'var(--ash)' }}>{k + 1}.</span><span style={{ color: 'var(--charcoal)' }}>{t.stage}</span>— {t.result}
+                        </div>
+                      ))}
+                      {r.models && <div style={{ font: 'var(--code-sm)', color: 'var(--ash)', marginTop: 8 }}>{r.models.join(' · ')} · {r.durationMs}ms</div>}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 16, padding: '11px 13px', background: 'var(--surface-bone)', borderRadius: 'var(--radius-md)', font: 'var(--body-sm)', color: 'var(--charcoal)' }}>
-          <WIcon name="info" size={14} style={{ marginTop: 1, flex: '0 0 auto', color: 'var(--stone)' }} />
-          <span>Extraction is live. Full citation verification &amp; the tracked-change workflow are demonstrated on the worked Crestholm matter.</span>
-        </div>
+
+        {!online && (
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 14, padding: '11px 13px', background: 'var(--surface-bone)', borderRadius: 'var(--radius-md)', font: 'var(--body-sm)', color: 'var(--charcoal)' }}>
+            <WIcon name="info" size={14} style={{ marginTop: 1, flex: '0 0 auto', color: 'var(--stone)' }} />
+            <span>Extraction is live. Start the back-end (NVIDIA + Perplexity + corpus) to verify each citation against the real case-law corpus and open sources.</span>
+          </div>
+        )}
         <div style={{ marginTop: 14 }}><WBtn variant="outline" size="sm" iconLeft={<WIcon name="arrow-left" size={14} />} onClick={() => app.clearUploaded()}>Back to worked example</WBtn></div>
       </div>
     </div>

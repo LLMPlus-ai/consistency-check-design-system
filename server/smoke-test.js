@@ -40,7 +40,7 @@ function check(name, cond, extra) {
 
   const health = await req('GET', '/api/health');
   check('health ok', health.json.ok === true, health.json);
-  check('health reports findings', health.json.findings === 12, health.json);
+  check('health reports store + corpus', !!health.json.store && health.json.corpus >= 50, health.json);
 
   const boot = await req('GET', '/api/bootstrap');
   check('bootstrap has 12 findings', boot.json.findings.length === 12);

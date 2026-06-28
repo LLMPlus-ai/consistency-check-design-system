@@ -82,18 +82,19 @@ const routes = [];
 const on = (method, pattern, handler, opts) => routes.push([method, pattern, handler, opts || {}]);
 
 // --- System / health ---
-on('GET', /^\/api\/health$/, (req, res, m, b, s) => {
+// Liveness of the FUNCTION, deliberately independent of the database so the app
+// connects (and live verification works) even before the cc_state table exists.
+on('GET', /^\/api\/health$/, (req, res) => {
+  const cfg = nvidia.configured();
   send(res, 200, {
     ok: true,
     service: 'consistency-check-api',
     store: db.storeInfo().kind,
-    revision: s.meta.revision,
-    seededAt: s.meta.seededAt,
-    findings: s.findings.length,
-    queueOpen: s.queue.filter((q) => q.status === 'Pending Review' || q.status === 'Needs Amendment').length,
+    models: { nvidia: cfg.openrouter, perplexity: cfg.perplexity },
+    corpus: corpus.stats().count,
     time: new Date().toISOString(),
   });
-});
+}, { noState: true });
 
 // --- Live AI models ---
 on('GET', /^\/api\/llm\/status$/, (req, res) => {

@@ -14,3 +14,5 @@ challenges_documents/
 # Runtime database (regenerated from seed) + smoke-test artefacts.
 server/db.json
 server/db.*.json
+.vercel
+.env*

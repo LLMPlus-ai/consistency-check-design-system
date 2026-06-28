@@ -70,7 +70,7 @@ function BackendChip({ app }) {
   const online = !!b.connected;
   const dot = online ? 'var(--verified)' : 'var(--ash)';
   const label = online ? 'API connected' : 'Offline — static seed';
-  const rev = online && b.health ? ' · db r' + b.health.revision : '';
+  const rev = online && b.health && b.health.store ? ' · ' + b.health.store : '';
   return (
     <button onClick={() => app.goTo('System')} title={online ? 'Back-end live at ' + b.base + ' — open System map' : 'Back-end not reachable; showing static demo data. Run: node server/index.js'}
       style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 36, padding: '0 12px', borderRadius: 'var(--radius-full)', background: 'var(--surface-card)', border: '1px solid var(--hairline-strong)', cursor: 'pointer', font: 'var(--code-sm)', color: 'var(--charcoal)' }}>
@@ -493,6 +493,39 @@ async function ccUnzipDocx(buf) {
   return paras;
 }
 
+// Shared document parser — PDF / DOCX / text/markdown → { name, pages[], citations[] }.
+// Used by BOTH the landing-page upload and the in-app upload drawer so a real
+// uploaded document is genuinely parsed (text extracted, citations detected),
+// not merely named. PDF via pdf.js, DOCX via the in-house unzip+inflate.
+async function ccParseDocument(raw) {
+  const name = raw.name.toLowerCase();
+  const splitPages = (txt) => {
+    const paras = txt.replace(/\r/g, '').split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+    const pages = [];
+    for (let i = 0; i < paras.length; i += 6) pages.push(paras.slice(i, i + 6).join('\n\n'));
+    return pages.length ? pages : [txt];
+  };
+  let pages = [];
+  if (name.endsWith('.pdf') && window.pdfjsLib) {
+    const buf = await raw.arrayBuffer();
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+    const n = Math.min(pdf.numPages, 12);
+    for (let p = 1; p <= n; p++) { const page = await pdf.getPage(p); const tc = await page.getTextContent(); pages.push(tc.items.map((it) => it.str).join(' ').replace(/\s+/g, ' ').trim()); }
+  } else if (name.endsWith('.docx')) {
+    const buf = await raw.arrayBuffer();
+    const paras = await ccUnzipDocx(buf);
+    if (!paras.length) throw new Error('empty docx');
+    for (let i = 0; i < paras.length; i += 6) pages.push(paras.slice(i, i + 6).join('\n\n'));
+  } else if (name.endsWith('.txt') || name.endsWith('.md')) {
+    pages = splitPages(await raw.text());
+  } else {
+    pages = splitPages(await raw.text().catch(() => ''));
+    if (!pages.join('').trim()) throw new Error('unsupported');
+  }
+  return { name: raw.name, pages, citations: window.CCDetectCitations(pages.join('\n')) };
+}
+
 function UploadModal({ open, onClose, app }) {
   const [file, setFile] = useState(null);
   const [drag, setDrag] = useState(false);
@@ -516,36 +549,16 @@ function UploadModal({ open, onClose, app }) {
     if (!raw) { onClose(); app.toast('Review posture set: ' + (window.CCPostures[posture] || {}).label + (scope === 'default' ? ' — practice default' : ' — this matter'), { icon: 'sliders-horizontal', hue: 'var(--primary-deep)' }); return; }
     setPhase('parsing');
     try {
-      const name = raw.name.toLowerCase();
-      let pages = [];
-      if (name.endsWith('.pdf') && window.pdfjsLib) {
-        const buf = await raw.arrayBuffer();
-        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-        const pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
-        const n = Math.min(pdf.numPages, 12);
-        for (let p = 1; p <= n; p++) { const page = await pdf.getPage(p); const tc = await page.getTextContent(); pages.push(tc.items.map((it) => it.str).join(' ').replace(/\s+/g, ' ').trim()); }
-      } else if (name.endsWith('.docx')) {
-        const buf = await raw.arrayBuffer();
-        const paras = await ccUnzipDocx(buf);
-        if (!paras.length) throw new Error('empty docx');
-        for (let i = 0; i < paras.length; i += 6) pages.push(paras.slice(i, i + 6).join('\n\n'));
-      } else if (name.endsWith('.txt') || name.endsWith('.md')) {
-        pages = splitPages(await raw.text());
-      } else {
-        pages = splitPages(await raw.text().catch(() => ''));
-        if (!pages.join('').trim()) throw new Error('unsupported');
-      }
-      const cites = window.CCDetectCitations(pages.join('\n'));
-      app.loadUploaded({ name: raw.name, pages, citations: cites });
-      // Register the upload with the back-end and run the verification pipeline
-      // server-side so the audit trail and runs reflect a real analysis.
+      const parsed = await ccParseDocument(raw);
+      app.loadUploaded(parsed);
+      // Register the upload with the back-end so the audit trail / runs reflect it.
       if (window.CCApi && app.backend && app.backend.connected) {
-        window.CCApi.createDocument(raw.name, app.activeProject)
+        window.CCApi.createDocument(parsed.name, app.activeProject)
           .then((doc) => window.CCApi.analyze(doc.id))
           .then(() => app.pushSync())
           .catch(() => {});
       }
-      app.toast(raw.name + ' parsed — ' + cites.length + ' citation' + (cites.length === 1 ? '' : 's') + ' detected', { icon: 'file-check-2', hue: 'var(--verified)' });
+      app.toast(parsed.name + ' parsed — ' + parsed.citations.length + ' citation' + (parsed.citations.length === 1 ? '' : 's') + ' detected', { icon: 'file-check-2', hue: 'var(--verified)' });
       setPhase('idle'); setFile(null); rawRef.current = null; onClose();
     } catch (e) {
       setPhase('idle');
@@ -650,11 +663,23 @@ function IntakeTopBar() {
   );
 }
 
-function LandingPage({ onStart }) {
+function LandingPage({ onStart, onUpload }) {
   const m = window.CCData.matter;
   const fileRef = React.useRef(null);
   const [drag, setDrag] = useState(false);
-  const pick = (f) => { if (f) onStart(f.name); };
+  const [busy, setBusy] = useState(false);
+  // Genuinely parse the chosen file (PDF/DOCX/text) and hand the parsed
+  // document up so the app verifies ITS citations — not the canned demo.
+  const pick = async (f) => {
+    if (!f || busy) return;
+    setBusy(true);
+    try {
+      const parsed = await ccParseDocument(f);
+      onUpload(parsed);
+    } catch (e) {
+      onStart(f.name); // unparseable — fall through to the worked example
+    }
+  };
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--canvas)' }}>
       <IntakeTopBar />
@@ -677,16 +702,16 @@ function LandingPage({ onStart }) {
             <div style={{ width: 56, height: 56, borderRadius: 'var(--radius-full)', background: 'var(--primary-soft)', color: 'var(--primary-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 18px' }}>
               <Icon name="upload-cloud" size={26} />
             </div>
-            <button onClick={() => fileRef.current && fileRef.current.click()}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 9, height: 48, padding: '0 26px', borderRadius: 'var(--radius-full)', background: 'var(--primary)', color: 'var(--on-primary, #fff)', border: 'none', cursor: 'pointer', font: 'var(--button)', boxShadow: '0 1px 2px rgba(0,0,0,0.08)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'var(--primary-deep)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'var(--primary)'; }}>
-              <Icon name="upload" size={17} /> Upload document
+            <button onClick={() => !busy && fileRef.current && fileRef.current.click()} disabled={busy}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 9, height: 48, padding: '0 26px', borderRadius: 'var(--radius-full)', background: 'var(--primary)', color: 'var(--on-primary, #fff)', border: 'none', cursor: busy ? 'wait' : 'pointer', font: 'var(--button)', boxShadow: '0 1px 2px rgba(0,0,0,0.08)', opacity: busy ? 0.85 : 1 }}
+              onMouseEnter={(e) => { if (!busy) e.currentTarget.style.background = 'var(--primary-deep)'; }}
+              onMouseLeave={(e) => { if (!busy) e.currentTarget.style.background = 'var(--primary)'; }}>
+              <Icon name={busy ? 'loader' : 'upload'} size={17} /> {busy ? 'Parsing document…' : 'Upload document'}
             </button>
             <div style={{ font: 'var(--body-sm)', color: 'var(--mute)', marginTop: 16 }}>
-              Drag &amp; drop or browse · PDF or Word · we scan every citation
+              Drag &amp; drop or browse · PDF, Word or text · we scan and verify every citation
             </div>
-            <input ref={fileRef} type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }}
+            <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.txt,.md" style={{ display: 'none' }}
               onChange={(e) => pick(e.target.files && e.target.files[0])} />
           </div>
           <div style={{ font: 'var(--label)', color: 'var(--stone)', marginTop: 20 }}>
@@ -909,7 +934,21 @@ function App() {
     document.body.style.cursor = 'col-resize'; document.body.style.userSelect = 'none';
   };
 
-  if (phase === 'landing') return <LandingPage onStart={(name) => { setUploadName(name); setPhase('loading'); }} />;
+  if (phase === 'landing') return <LandingPage
+    onStart={(name) => { setUploadName(name); setPhase('loading'); }}
+    onUpload={(parsed) => {
+      // A real document was parsed — load it, enter the app, and register it
+      // with the back-end so its citations are verified live (corpus → web → LLM).
+      setUploadedDoc(parsed);
+      setUploadName(parsed.name);
+      setPhase('loading');
+      if (window.CCApi && backend.connected) {
+        window.CCApi.createDocument(parsed.name, activeProject)
+          .then((doc) => window.CCApi.analyze(doc.id))
+          .then(() => pushSync())
+          .catch(() => {});
+      }
+    }} />;
   if (phase === 'loading') return <LoadingScreen fileName={uploadName} onDone={() => setPhase('app')} />;
 
   return (
