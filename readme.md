@@ -1,144 +1,291 @@
-# Consistency Check — Design System
+# Consistency Check
 
-**Legal document verification for AI-assisted legal work.**
-*"Grammarly for legal consistency — with citation verification and a defensible AI supervision trail."*
+**A legal-AI citation verification and supervision platform.**
+*Grammarly for legal consistency — with citation verification and a defensible AI supervision trail.*
 
-Consistency Check is an AI-powered legal document verification and supervision platform. It scans legal documents (skeleton arguments, filings, memos) for **fabricated citations**, **mischaracterised authorities**, internal contradictions, and risky AI-generated claims — then routes findings through a human supervision queue and an immutable audit trail so the work is **defensible for filing**.
+Consistency Check scans legal documents — skeleton arguments, filings, memos — for **fabricated citations**, **mischaracterised authorities**, and risky AI-generated claims, then routes every finding through a human supervision queue and an immutable audit trail so the work is **defensible for filing**. It pairs a deterministic case-law corpus matcher with live large-language-model reasoning, and surfaces the result through a calm, partner-grade interface.
 
-This design system reframes **Replicate's** warm developer-tools brand language — cream canvas, ink type, a single scarce hot-orange accent, oversized display type, and monospace code wells — for a serious legal-AI product. Orange becomes the *risk stamp*; JetBrains Mono carries every case citation and statutory reference.
+It is delivered as a **complete full-stack application**: a dependency-free Node back-end (REST API, persisted database, verification pipeline, reporting) connected to a React front-end, with live **NVIDIA Nemotron** and **Perplexity** model integration, all built on a rigorous, self-contained design system.
 
----
-
-## Sources
-
-The system was built from materials supplied in the hackathon brief:
-
-- **`hard_coding/DESIGN-replicate.md`** — the authoritative visual brief (a Replicate brand analysis). All colour, type, spacing, radius and elevation tokens derive from it.
-- **`hard_coding/consistency_check_claude_design_prompt.md`** — the product brief: screens, copy, and the static demo dataset (12 citations, supervisor queue, audit events, data sources, architecture layers).
-- **`hard_coding/system_diagram_v0.png`** — the verification decision flow (internal corpus → external check → verdict).
-- **`hard_coding/WhatsApp Image 2026-06-27...jpeg`** — high-level system architecture (Input → Extraction → Verification → Supervision → Output).
-- **`hard_coding/main_data/*.md`** — the local UK/Commonwealth case corpus (~57 authorities) used as the primary verification source.
-
-> ⚙️ **Now a connected full-stack app.** A dependency-free Node back-end
-> (`server/`) serves a REST API, a persisted database, the verification pipeline
-> and partner-ready reports — and connects the front-end to live **NVIDIA
-> Nemotron** (citation extraction + mischaracterisation) and **Perplexity**
-> (out-of-corpus retrieval), verifying against the real UK case-law corpus. Run
-> `node server/index.js` and open `http://localhost:4000/`. See **`BACKEND.md`**
-> for the architecture and full API reference. With no API keys configured it
-> degrades gracefully to deterministic, corpus-only verification on static demo
-> data, still labelled as such.
+```
+            INPUTS              NVIDIA AI PROCESSING        VERIFICATION + LIVE        OUTPUTS + SUPERVISION
+  ┌────────────────────┐   ┌────────────────────────┐  ┌──────────────────────┐  ┌────────────────────────┐
+  │ Legal documents    │   │ Parse / OCR            │  │ Deterministic engine │  │ Citation verdicts      │
+  │ Case-law corpus    │──▶│ Citation extraction    │─▶│  (internal corpus)   │─▶│ Risk score + reasons   │
+  │ Open legal sources │   │ Normalisation          │  │ Perplexity sonar     │  │ Partner review board   │
+  └────────────────────┘   │ Mischaracterisation    │  │  (live web retrieval)│  │ Audit trail / report   │
+                           └────────────────────────┘  └──────────────────────┘  └────────────────────────┘
+              UI    ·    API    ·    Database    ·    Reports        (Application Infrastructure)
+```
 
 ---
 
-## What's in here
+## Contents
 
-| Path | Purpose |
+- [Overview](#overview)
+- [Feature summary](#feature-summary)
+- [How verification works](#how-verification-works)
+- [AI models and data](#ai-models-and-data)
+- [Quick start](#quick-start)
+- [Configuration](#configuration)
+- [API surface](#api-surface)
+- [The application](#the-application)
+- [Design system](#design-system)
+- [Project structure](#project-structure)
+- [Testing](#testing)
+- [Security and privacy](#security-and-privacy)
+- [Tech stack](#tech-stack)
+- [Licensing and fonts](#licensing-and-fonts)
+
+---
+
+## Overview
+
+The platform addresses two connected problems that arise when lawyers rely on AI drafting tools:
+
+1. **Citation integrity** — AI tools confidently invent plausible-looking authorities (case names that echo the dispute's industry) and misapply real ones. Every citation in a document must be confirmed to exist *and* to support the proposition it is cited for, before filing.
+2. **AI supervision** — a human must be able to understand what the AI did, challenge its outputs proportionately, retain accountability for the legal judgement, and scale that oversight without reverting to line-by-line manual review.
+
+Consistency Check answers both: it classifies each citation as **Verified · Mischaracterised · Fabricated**, attaches a confidence score and a plain-language explanation, and records every machine and human action in an auditable trail, ending in a partner-ready report.
+
+---
+
+## Feature summary
+
+### Verification and AI
+
+| Feature | Description |
 |---|---|
-| `server/` | Zero-dependency Node back-end — REST API, database, verification pipeline, NVIDIA + Perplexity integration, reports (see `BACKEND.md`). |
-| `scripts/ingest-corpus.js` | Builds the sanitized real case-law corpus (`server/corpus.json`). |
-| `styles.css` | Global entry point — link this one file. Imports only. |
-| `tokens/` | Colour, typography, spacing, radius, elevation, fonts, base reset. |
-| `components/core/` | Reusable primitives (Button, Badge, RiskBadge, Card, StatCard, Input, Tabs, FilterChip, Avatar, HealthMeter). |
-| `ui_kits/consistency-check/` | Full-screen recreation of the verification dashboard. |
-| `foundations/` | Specimen cards for the Design System tab. |
-| `SKILL.md` | Agent-Skill manifest for downloadable use. |
+| **Six-stage pipeline** | Parse/OCR → citation extraction → normalisation → mischaracterisation analysis → deterministic verification → live retrieval, each with an inspectable trace. |
+| **Deterministic corpus matching** | Citations are matched against a real 58-authority UK/Commonwealth case-law corpus by exact citation, exact name, or fuzzy party-name overlap — fast, free, and offline. |
+| **Live web retrieval** | Authorities absent from the corpus are checked against the open web via the Perplexity `sonar` model to determine whether they genuinely exist. |
+| **Mischaracterisation analysis** | NVIDIA Nemotron compares each cited proposition to the authority's actual holding and flags wrong-measure / overstated / distorted uses (calibrated to a practising litigator's standard, not pedantry). |
+| **Three-verdict classification** | Every citation resolves to **Verified · Mischaracterised · Fabricated**, with a confidence percentage and a written rationale. |
+| **Parallel-citation normalisation** | One judgment reported across multiple series (neutral citation, AC, WLR, All ER) resolves to a single authority, so any reference form is accepted. |
+| **Ratio vs obiter weighting** | Distinguishes binding ratio from obiter/plurality reasoning, flagging citations that overstate an authority's *weight*. |
+| **Jurisdiction awareness** | Tracks England & Wales, Scotland, Northern Ireland, Privy Council, and US/EU persuasive authority, flagging out-of-jurisdiction use. |
+| **Graceful degradation** | With no API keys configured, the system runs in deterministic, corpus-only mode and still produces verdicts — clearly labelled. |
 
-Bundle namespace: `window.ConsistencyCheckDesignSystem_77c3a7`.
+### Supervision and governance
 
----
+| Feature | Description |
+|---|---|
+| **Two-stage review workflow** | Associate review followed by partner sign-off, with per-citation approve / amend / reject / escalate and a "trust associate" bulk path. |
+| **Configurable firm guardrails** | Conservative and Flexible review postures control how externally-verified, out-of-jurisdiction, and absent citations are routed (suspected fabrications are never auto-passed). |
+| **Triage by urgency** | Findings are ordered by severity and weakest fidelity against the filing clock. |
+| **Tracked-change working copy** | Apply suggested corrections, edit paragraphs manually, or revert — then export a clean filing copy. |
+| **Immutable audit trail** | Every engine and human action is timestamped and recorded, including each live model verification and the models used. |
+| **Partner-ready reports** | A generated report summarises verdicts, review progress, filing readiness, and the full audit record. |
 
-## CONTENT FUNDAMENTALS
+### Application and platform
 
-How Consistency Check writes.
+| Feature | Description |
+|---|---|
+| **Full-stack and connected** | A REST API and persisted database back the UI; the front-end hydrates from the API on load and persists every supervision action. |
+| **Zero runtime dependencies** | The server uses only the Node standard library — no `npm install`, no build step. |
+| **Linkable System map** | A live, data-driven rendering of the architecture diagram where every node links to the screen it powers *and* the API endpoint behind it, with live model status and an interactive verification tool. |
+| **Document ingestion** | Upload PDF / DOCX / text; citations are extracted client-side and the document is analysed server-side. |
+| **Live connection status** | A status indicator reflects back-end liveness and database revision in real time. |
+| **Reset and reseed** | The database can be reset to a clean seed at any time. |
 
-- **Voice: calm, precise, institutional.** This is a tool partners stake their professional reputation on. Copy never hypes. It states facts and consequences. "No reliable authority found." "Partner review required before filing."
-- **Person: third-person / imperative, never chatty.** The system describes what it did ("12 citations extracted from skeleton argument") and what the human should do ("Revise the paragraph to distinguish reliance loss from expectation loss"). It does **not** say "I think" or "We found". Avoid first person. Address the user implicitly through recommended actions, not "you should".
-- **Risk language is graded and unambiguous.** Four verdicts only — **Verified · Mischaracterised · Fabricated** for citations, and a **Low · Medium · High · Critical** risk ladder. Never soften: a fabricated case is "Fabricated", not "unconfirmed".
-- **Legal register, British spelling.** "Mischaracterised", "authorities", "skeleton argument", "without-notice injunction", "£47m". Case names in italics by convention but rendered in monospace here to read as verifiable data. Citations are quoted exactly: *Lumley v Gye* (1853) 2 E & B 216.
-- **Recommended actions are verbs.** "Remove or replace citation", "Revise legal proposition", "Check quotation and procedural context", "No action required".
-- **Numbers are confident and bounded.** Confidence as a whole percentage (96%), health as a score out of 100 (58 / 100). No spurious decimals.
-- **No emoji. No exclamation marks. No playful illustration.** The most expressive the UI gets is a coloured status dot.
-- **Honest about being a demo.** Persistent labels: "Demo Dataset Loaded", "Static Demo Data", "Partner Review Mode". The product never implies live verification it isn't doing.
+### Design system
 
-**Casing:** Sentence case for body and most labels. Title Case for proper nouns, product tabs (Dashboard, Citation Checker, Supervision, Audit Trail, Data Sources) and status words (Verified, Fabricated, Critical). UPPERCASE + letter-spacing only for small overline/eyebrow labels.
-
----
-
-## VISUAL FOUNDATIONS
-
-The look: *AI lab notebook crossed with a printed legal brief.*
-
-### Colour
-- **Warm cream canvas (`--canvas` #f9f7f3), never pure white.** White (`--surface-card`) appears only on cards, inputs, and table rows. The cream temperature is load-bearing — it makes the product feel like paper and ink rather than a cold SaaS console.
-- **Ink (`--ink` #202020) for type**, a hair warmer than black to sit on cream. A full grey ramp (`--body` → `--charcoal` → `--mute` → `--ash` → `--stone`) handles hierarchy without colour.
-- **Hot orange (`--primary` #ea2804) is a stamp, used scarcely** — the single most consequential action per view (escalate, the high-risk count, an inline link). One orange element per viewport at most. Pressed state deepens to `--primary-deep` #c01f00.
-- **Functional risk hues only.** Verification statuses and the risk ladder are the *only* sanctioned non-neutral colours beyond orange: verified green (#2b9a66), mischaracterised ochre (#b8730a), fabricated/critical deep red (#c01f00 / #8b1500). Each has a faint tinted background for badges that still reads on cream. No decorative colour, ever.
-
-### Type
-- **Three families, strict lanes.** Bricolage Grotesque (display, 30px→128px, tight `line-height:1.0`, negative tracking) · Geist (all UI, body, labels) · JetBrains Mono (every citation, case slug, reference, score readout). Emphasis comes from *changing family*, not bumping weight.
-- Display headlines run large and pack into geometric blocks. Body stays 400 weight; never 500 for emphasis.
-
-### Shape & border
-- **Curves are soft and intentional.** Every *interactive* element is fully rounded (`--radius-full`): buttons, inputs, badges, pills, avatars, filter chips. Content **cards** step to `--radius-md` (10px) or `--radius-lg` (16px). Never pill-shape a card; never sharpen a button.
-- **Hairlines, not boxes.** Dividers are 1px `--hairline` (rgba ink 12%). Structural borders use `--hairline-strong` (#202020) on buttons/focus.
-
-### Elevation
-- **Colour-blocking is the primary depth language**, exactly as Replicate. A card is lifted by becoming white-on-cream, or dark-inverting to `--surface-dark`, not by shadow.
-- Shadows are restrained and reserved: `--elev-card` (barely-there 1px seat) on cards, `--elev-panel` on the finding detail drawer that slides in from the right, `--elev-pop` on menus. No drop shadows on flat cream.
-
-### Backgrounds & motifs
-- Flat cream and bone fields; **no gradients** except the optional orange→pink atmospheric mesh reserved for a marketing hero (not used in the dashboard).
-- **Dark code/data wells** (`--surface-dark` #202020) sit inside cream as full-bleed reading surfaces — used here for the audit trail and the architecture diagram, mimicking print pull-quotes.
-- No textures, no photography in the product surfaces. The case corpus *is* the imagery — rendered as monospace data.
-
-### Motion & states
-- Restrained. Short opacity/translate fades (~120–160ms, ease-out) on hover and drawer entry. No bounces, no infinite loops.
-- **Hover:** white cards tint to `--surface-bone` or lift one hairline; buttons darken one step. **Press:** orange → `--primary-deep`; dark → slightly lighter; a 1px inset. **Focus:** 3px `--ring-focus` orange-tinted ring.
-- Status badges are static colour-blocks — the risk *is* the decoration.
-
-### Layout rules
-- Max content width ~1280px; the app shell is a fixed 60px top nav (cream, single hairline bottom border) over a cream working canvas.
-- Generous editorial whitespace on cream (24–32px between groups); tighter 12–16px rhythm inside data-dense cards and tables.
-- The finding detail panel is a fixed right-hand drawer over the findings table — strong separation between *document → findings → evidence → supervisor actions*.
+| Feature | Description |
+|---|---|
+| **Token-driven foundations** | Colour, typography, spacing, radius, elevation, and fonts as CSS custom properties behind a single stylesheet. |
+| **Reusable component library** | Buttons, inputs, tabs, filter chips, status and risk badges, health meter, cards, stat cards, avatars — each with `.jsx`, `.d.ts`, and prompt documentation. |
+| **Full reference UI kit** | A complete click-through verification dashboard built from the tokens and components. |
+| **Documented brand voice** | A calm, precise, institutional content standard with a graded, unambiguous risk vocabulary. |
 
 ---
 
-## ICONOGRAPHY
+## How verification works
 
-- **Lucide** (https://lucide.dev) is the chosen icon system — open-source, 1.5–2px stroke, rounded line joins. It matches the brand's "friendly precision": geometric, calm, no fill. Linked from CDN (`lucide@latest`) in the UI kit and component cards. **Substitution flag:** the original brief ships no icon set, so Lucide is a chosen stand-in consistent with the stroke weight of the system.
-- **Stroke, not fill.** Icons inherit `currentColor` and sit in `--charcoal` / `--mute` by default, going `--ink` on emphasis or a risk hue when paired with a status.
-- **No emoji, anywhere.** The brand voice is institutional; emoji would undercut trust.
-- **A coloured status dot** (8px filled circle in the verdict hue) is the one near-iconographic flourish used inline in tables and queues.
-- The architecture/flow diagrams are rendered from HTML/CSS boxes + hairlines (see the diagram in `system_diagram_v0.png`), not illustration — black-ink flow-chart style on cream.
-- **Assets:** `assets/` holds the supplied `system_diagram_v0.png` (verification decision flow) and `architecture.png` (high-level system map) for reference and embedding. No proprietary logo was supplied — the wordmark is set in Bricolage Grotesque (see Brand cards).
+Each citation flows through a two-stage decision, applied with the same engine on the server and the client so verdicts never disagree:
 
----
+```
+Stage 1 — internal corpus
+  ├─ Found in trusted corpus?
+  │    ├─ Yes → proposition matches the holding?
+  │    │         ├─ Yes → Verified
+  │    │         └─ No  → Mischaracterised
+  │    └─ No  → escalate to Stage 2
+  │
+Stage 2 — live retrieval
+  └─ Found in an approved external source?
+       ├─ Yes → proposition matches the source?
+       │         ├─ Yes → Verified (external)
+       │         └─ No  → Mischaracterised (external)
+       └─ No  → Fabricated  (absent from every source checked)
+```
 
-## INDEX — what lives where
+Firm guardrails then route each leaf verdict to **Pass** or **Review**, with the reason recorded. The result is a verdict, a confidence score, a written explanation, and a step-by-step trace suitable for audit.
 
-**Foundations & tokens**
-- `styles.css` — global entry point (imports only).
-- `tokens/colors.css · typography.css · spacing.css · elevation.css · fonts.css · base.css`.
-- `foundations/` — specimen cards: `color-brand · color-surfaces · color-text · color-status` (Colors), `type-display · type-body · type-mono` (Type), `spacing-scale · spacing-radius` (Spacing), `brand-wordmark · brand-voice` (Brand).
-
-**Components** (`window.ConsistencyCheckDesignSystem_77c3a7`)
-- `components/forms/` — **Button · IconButton · Input · FilterChip · Tabs** (`forms.card.html`).
-- `components/status/` — **StatusBadge · RiskBadge · HealthMeter** (`status.card.html`).
-- `components/surfaces/` — **Card · StatCard · Avatar** (`surfaces.card.html`).
-- Each component ships `.jsx` + `.d.ts` + `.prompt.md`.
-
-**UI kit** (`ui_kits/consistency-check/`)
-- `index.html` — full click-through app shell + tab routing (also a Starting Point).
-- Screens: `Dashboard · CitationChecker (table + detail drawer) · Supervision · AuditTrail · DataSources (+ architecture snapshot)`.
-- `CaseHeader.jsx`, `shared.jsx` (Icon/Overline/Meta helpers), `data.js` (all static demo data).
-
-**Assets** — `assets/system-flow-diagram.png` (verification decision flow), `assets/architecture-diagram.png` (high-level system map).
-
-**Skill** — `SKILL.md` (Agent-Skill manifest for downloadable use).
+The demonstration scenario — *Crestholm Dynamics plc v Veltros Industries Inc*, a £47m skeleton argument with 12 citations — resolves to 7 verified, 2 mischaracterised, and 3 fabricated, mirroring the canonical challenge expectations (the fabricated authorities carry invented party names that echo the dispute's industries — the classic tell of AI confabulation).
 
 ---
 
-## Font substitution notice
+## AI models and data
 
-The proprietary originals (**rb-freigeist-neue**, **basier-square**) could not be licensed. Per the brief's own guidance they are substituted with **Bricolage Grotesque** (display) and **Geist** (UI/body) from Google Fonts; **JetBrains Mono** is the genuine family. If you have the original font files, drop them in and update `tokens/fonts.css` — **please send them and I'll swap them in.**
+| Component | Provider / source | Role |
+|---|---|---|
+| **NVIDIA Nemotron** | `nvidia/nemotron-3-super-120b-a12b` via OpenRouter | Citation extraction and mischaracterisation analysis |
+| **Perplexity `sonar`** | Perplexity API | Live web retrieval for out-of-corpus citations |
+| **Case-law corpus** | Real UK/Commonwealth judgments | Deterministic first-pass verification (58 authorities) |
+
+The corpus is ingested from the source case files into a sanitized, key-free snapshot (`server/corpus.json`) by `scripts/ingest-corpus.js`. Model access is optional: the platform is fully functional in deterministic mode without keys.
+
+---
+
+## Quick start
+
+**Requirements:** Node.js 18 or later. No other dependencies.
+
+```bash
+node server/index.js          # or: npm start
+# open http://localhost:4000/
+```
+
+The same server hosts the API, the database, the verification pipeline, and the static front-end — so everything is same-origin and works out of the box.
+
+To rebuild the corpus snapshot from source case files (optional):
+
+```bash
+npm run ingest
+```
+
+---
+
+## Configuration
+
+All configuration is optional. Copy `server/.env.example` to `server/.env` to enable the live AI processing layer:
+
+```ini
+OPENROUTER_API_KEY=sk-or-v1-...   # NVIDIA Nemotron, via OpenRouter
+PERPLEXITY_API_KEY=pplx-...       # Perplexity sonar (live web retrieval)
+# PORT=4000                       # server port (default 4000)
+# CC_DB_FILE=                     # database file path (default server/db.json)
+```
+
+With no keys present, `GET /api/llm/status` reports `mode: "deterministic-only"` and verification falls back to the corpus matcher. The product remains fully usable.
+
+---
+
+## API surface
+
+A REST API exposes every capability. Highlights below; the complete reference is in **[`BACKEND.md`](BACKEND.md)**.
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/api/health` | Liveness, database revision, queue size |
+| `GET` | `/api/bootstrap` | Full snapshot used to hydrate the front-end |
+| `GET` | `/api/architecture` | The system diagram model (drives the System page) |
+| `GET` | `/api/llm/status` | NVIDIA / Perplexity availability, corpus stats, mode |
+| `POST` | `/api/llm/verify` | Verify one citation live: corpus → Perplexity → Nemotron |
+| `POST` | `/api/documents/:id/analyze` | Run the six-stage pipeline; returns the staged trace |
+| `POST` | `/api/findings/:id/review` | Approve / amend / reject / escalate a finding |
+| `GET` | `/api/reports/:projectId` | Partner-ready filing report and readiness |
+| `POST` | `/api/reset` | Reseed the database |
+
+Every supervision action appends to the audit trail; every live verification records the models used.
+
+---
+
+## The application
+
+The front-end is a single-page React application (Babel-in-browser, no build step) served by the back-end. On load it pings the API, hydrates its data store, and shows a live connection status; if the back-end is unreachable it degrades to the static seed, clearly labelled "Offline".
+
+**Screens**
+
+- **Document** — the working skeleton argument with tracked-change corrections.
+- **Citation Checker** — the findings table with a right-hand evidence drawer.
+- **Verification** — the live decision flow and pipeline trace.
+- **Insights** — deep analysis: risk decomposition, fidelity, triage.
+- **Source Library** — the trusted corpus and authorities discovered during verification, promotable into the corpus.
+- **Audit Trail** — the immutable supervision record.
+- **Data Sources** — connected legal sources and configured engines.
+- **System** — the linkable architecture map, live model status, and an interactive live-verification tool.
+
+---
+
+## Design system
+
+The interface is built on a strict, self-contained design language: *an AI lab notebook crossed with a printed legal brief.*
+
+**Colour.** A warm cream canvas (`--canvas` #f9f7f3), never pure white; ink type (`--ink` #202020) with a full grey ramp for hierarchy. Hot orange (`--primary` #ea2804) is a scarce *risk stamp* — at most one orange element per viewport. The only other non-neutral hues are functional verdict colours: verified green, mischaracterised ochre, fabricated/critical deep red.
+
+**Type.** Three families in strict lanes — **Bricolage Grotesque** (display), **Geist** (UI and body), **JetBrains Mono** (every citation, reference, and score). Emphasis comes from changing family, not weight.
+
+**Shape, elevation, motion.** Interactive elements are fully rounded; cards step to softer radii. Depth is colour-blocking (white-on-cream, or dark-inverted wells), not shadow. Motion is restrained — short opacity and translate fades, no bounces.
+
+**Voice.** Calm, precise, institutional. British spelling. Graded, unambiguous risk language. Recommended actions are verbs. No emoji, anywhere — the most expressive the UI gets is a coloured status dot.
+
+**Iconography.** [Lucide](https://lucide.dev) line icons at 1.5–2px stroke, inheriting `currentColor`.
+
+The component library (`window.ConsistencyCheckDesignSystem_77c3a7`) ships Button, IconButton, Input, FilterChip, Tabs, StatusBadge, RiskBadge, HealthMeter, Card, StatCard, and Avatar — each with a `.jsx` implementation, a `.d.ts` type definition, and prompt documentation. Foundations and tokens live under `tokens/` and `foundations/`, with `styles.css` as the single global entry point.
+
+---
+
+## Project structure
+
+```
+.
+├── server/                     Zero-dependency Node back-end
+│   ├── index.js                HTTP server, router, static serving, REST API
+│   ├── db.js                   Persisted in-memory database + reset/seed
+│   ├── seed-loader.js          Single source of truth (loads data.js + flow.js)
+│   ├── pipeline.js             Six-stage verification pipeline + trace
+│   ├── corpus.js               Deterministic corpus matcher
+│   ├── corpus.json             Sanitized 58-authority corpus snapshot
+│   ├── nvidia.js               NVIDIA Nemotron (OpenRouter) + Perplexity clients
+│   ├── verify.js               Live verification orchestrator
+│   ├── architecture.js         Machine-readable system-diagram model
+│   ├── smoke-test.js           End-to-end API test (22 assertions)
+│   └── .env.example            Configuration template
+├── scripts/
+│   └── ingest-corpus.js        Builds corpus.json from source case files
+├── ui_kits/consistency-check/  Full React application + API client (api.js)
+├── components/                 Reusable component library (forms/status/surfaces)
+├── foundations/                Design-system specimen cards
+├── tokens/                     CSS custom-property tokens
+├── assets/                     Diagrams and logo
+├── styles.css                  Global stylesheet entry point
+├── BACKEND.md                  Full back-end architecture and API reference
+└── SKILL.md                    Agent-Skill manifest
+```
+
+---
+
+## Testing
+
+```bash
+npm run smoke
+```
+
+The smoke test boots the API on a dedicated port with a throwaway database and asserts the full path: bootstrap → document upload → pipeline analysis → supervision review → report generation → corpus matching → model status. All 22 assertions must pass.
+
+---
+
+## Security and privacy
+
+- **No secrets in version control.** API keys are read from the environment. The source brief data — which contains live keys — and the runtime database are git-ignored and never committed. The shipped `corpus.json` is a sanitized, key-free snapshot.
+- **Local-first verification.** The deterministic corpus matcher runs entirely offline; external model calls are made only when keys are configured and a citation requires live retrieval or reasoning.
+- **Auditable by design.** Every machine and human decision is recorded with a timestamp and attribution, supporting accountability and post-hoc review.
+
+---
+
+## Tech stack
+
+- **Back-end:** Node.js (standard library only — `http`, `fs`), zero runtime dependencies.
+- **Front-end:** React 18 (Babel standalone, no build step), CSS custom-property design tokens.
+- **AI:** NVIDIA Nemotron via OpenRouter; Perplexity `sonar`.
+- **Data:** Sanitized UK/Commonwealth case-law corpus (JSON).
+- **Icons:** Lucide.
+
+---
+
+## Licensing and fonts
+
+The proprietary display originals (**rb-freigeist-neue**, **basier-square**) could not be licensed and are substituted, per the brief's guidance, with **Bricolage Grotesque** (display) and **Geist** (UI/body) from Google Fonts; **JetBrains Mono** is the genuine family. To restore the originals, add the font files and update `tokens/fonts.css`.
+
+The design system reinterprets Replicate's warm developer-tools brand language for a serious legal-AI product. All case authorities referenced in the corpus are genuine published judgments; the demonstration matter and the fabricated citations within it are fictional by design.
