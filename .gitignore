@@ -3,4 +3,14 @@ node_modules/
 *.log
 .env
 .env.*
+!.env.example
 .claude/settings.local.json
+
+# Hackathon brief + provided datasets — contains LIVE API keys (OpenRouter,
+# Perplexity) and large binaries. NEVER commit. The app ingests a sanitized,
+# key-free corpus snapshot (server/corpus.json) from it instead.
+challenges_documents/
+
+# Runtime database (regenerated from seed) + smoke-test artefacts.
+server/db.json
+server/db.*.json

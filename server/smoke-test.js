@@ -3,17 +3,10 @@
  * supervision flow against the live endpoints. Run: node server/smoke-test.js */
 const http = require('http');
 
-// Use an isolated db file so the smoke test never clobbers a real session.
+// Runs against a dedicated port + throwaway DB so it never clobbers a real
+// session; calls /api/reset first so it starts from seed.
 process.env.PORT = process.env.PORT || 4099;
-const fs = require('fs');
-const path = require('path');
-const tmpDb = path.join(__dirname, 'db.smoke.json');
-try { fs.unlinkSync(tmpDb); } catch {}
-
-// Point db at a throwaway file by monkeypatching before require.
-const dbModule = require.resolve('./db');
-const orig = fs.writeFileSync;
-
+process.env.CC_DB_FILE = process.env.CC_DB_FILE || require('path').join(require('os').tmpdir(), 'cc-smoke-db.json');
 require('./index'); // starts the server on PORT
 
 const PORT = process.env.PORT;
@@ -85,6 +78,14 @@ function check(name, cond, extra) {
 
   const f = await req('GET', '/api/findings/cit-008');
   check('finding detail has ratio + corpus', !!f.json.corpus && !!f.json.ratio, Object.keys(f.json));
+
+  const corp = await req('GET', '/api/corpus');
+  check('corpus loaded (>= 50 authorities)', corp.json.stats && corp.json.stats.count >= 50, corp.json.stats);
+  const cmatch = await req('GET', '/api/corpus/match?q=' + encodeURIComponent('Lumley v Gye (1853) 2 E&B 216'));
+  check('corpus deterministic match works', cmatch.json.found === true && cmatch.json.method === 'exact-citation', cmatch.json);
+
+  const llm = await req('GET', '/api/llm/status');
+  check('llm status reports providers + mode', !!llm.json.providers && !!llm.json.mode, llm.json && Object.keys(llm.json));
 
   console.log(`\n  ${pass} passed, ${fail} failed\n`);
   process.exit(fail ? 1 : 0);

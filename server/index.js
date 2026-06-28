@@ -17,6 +17,9 @@ const path = require('path');
 const db = require('./db');
 const pipeline = require('./pipeline');
 const architecture = require('./architecture');
+const corpus = require('./corpus');
+const nvidia = require('./nvidia');
+const verify = require('./verify');
 
 const PORT = process.env.PORT || 4000;
 const ROOT = path.join(__dirname, '..');
@@ -92,6 +95,47 @@ on('GET', /^\/api\/health$/, (req, res) => {
     uptime: Math.round(process.uptime()),
     time: new Date().toISOString(),
   });
+});
+
+// ---- Live AI models: NVIDIA Nemotron (OpenRouter) + Perplexity + corpus ----
+on('GET', /^\/api\/llm\/status$/, (req, res) => {
+  const cfg = nvidia.configured();
+  send(res, 200, {
+    providers: {
+      nvidia: { name: 'NVIDIA Nemotron', via: 'OpenRouter', configured: cfg.openrouter, models: nvidia.MODELS },
+      perplexity: { name: 'Perplexity', model: nvidia.MODELS.perplexity, configured: cfg.perplexity },
+    },
+    corpus: corpus.stats(),
+    mode: (cfg.openrouter || cfg.perplexity) ? 'live' : 'deterministic-only',
+  });
+});
+
+// Verify a single citation live: corpus → Perplexity → Nemotron mischar.
+on('POST', /^\/api\/llm\/verify$/, async (req, res, m, body) => {
+  if (!body || !body.citation) return send(res, 400, { error: 'citation required' });
+  try {
+    const result = await verify.verifyCitation({ citation: body.citation, proposition: body.proposition, holding: body.holding });
+    // Record the live verification in the audit trail (Challenge 1 — auditability).
+    db.tx((s) => appendAudit(s, 'AI Verification Engine', 'Live citation verification', `${body.citation} → ${result.status} (${result.confidence}%) via ${result.models.join(', ')}`));
+    send(res, 200, result);
+  } catch (e) { send(res, 500, { error: e.message }); }
+});
+
+// Extract citations from document text using Nemotron.
+on('POST', /^\/api\/llm\/extract$/, async (req, res, m, body) => {
+  if (!body || !body.text) return send(res, 400, { error: 'text required' });
+  try { send(res, 200, await verify.extractCitations(body.text)); }
+  catch (e) { send(res, 500, { error: e.message }); }
+});
+
+// The trusted corpus (sanitized snapshot of the real case-law database).
+on('GET', /^\/api\/corpus$/, (req, res) => {
+  const limit = 200;
+  send(res, 200, { stats: corpus.stats(), cases: corpus.list().slice(0, limit) });
+});
+on('GET', /^\/api\/corpus\/match$/, (req, res) => {
+  const url = new URL(req.url, 'http://x'); const q = url.searchParams.get('q') || '';
+  send(res, 200, corpus.match(q));
 });
 
 // Architecture model (the diagram) + pipeline stage catalogue.

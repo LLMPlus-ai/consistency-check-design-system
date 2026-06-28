@@ -182,7 +182,7 @@ function SourceLibrary({ app }) {
     setCustom((c) => (c.find((x) => x.citation === item.citation) ? c : [{ ...item, id: item.id || ('add-' + Date.now()), addedByUser: true }, ...c]));
     app.toast(item.case + ' added to the source database', { icon: 'database-zap', hue: 'var(--verified)' });
   };
-  const addDiscovered = (d) => { setDiscState((s) => ({ ...s, [d.id]: 'added' })); promote(d); };
+  const addDiscovered = (d) => { setDiscState((s) => ({ ...s, [d.id]: 'added' })); promote(d); if (app.promoteSource) app.promoteSource(d.id); };
   const dismiss = (d) => setDiscState((s) => ({ ...s, [d.id]: 'dismissed' }));
 
   const corpus = useMemo(() => [...custom, ...base], [custom, base]);

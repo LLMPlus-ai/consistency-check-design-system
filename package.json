@@ -7,6 +7,7 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node server/index.js",
+    "ingest": "node scripts/ingest-corpus.js",
     "reset": "curl -s -X POST http://localhost:4000/api/reset",
     "smoke": "node server/smoke-test.js"
   },

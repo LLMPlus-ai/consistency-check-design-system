@@ -18,7 +18,7 @@ const COLUMNS = [
     title: 'Inputs',
     nodes: [
       { id: 'in-docs', name: 'Legal Documents', sub: 'PDF / DOCX / skeleton arguments', icon: 'file-text', tab: 'Document', api: '/api/documents' },
-      { id: 'in-corpus', name: 'Case-Law Corpus', sub: 'Internal authority database', icon: 'scale', tab: 'Source Library', api: '/api/source-library' },
+      { id: 'in-corpus', name: 'Case-Law Corpus', sub: 'Internal authority database', icon: 'scale', tab: 'Source Library', api: '/api/corpus' },
       { id: 'in-open', name: 'Open Legal Sources', sub: 'web / legislation / case lookup', icon: 'globe', tab: 'Data Sources', api: '/api/sources' },
     ],
   },
@@ -40,7 +40,7 @@ const COLUMNS = [
     title: 'Verification + Live Retrieval',
     nodes: [
       { id: 'vf-deterministic', name: 'Deterministic Verification Engine', sub: 'match citations to known authorities', icon: 'shield-check', tab: 'Verification', api: '/api/pipeline/stages', stage: 'deterministic' },
-      { id: 'vf-perplexity', name: 'Perplexity API', sub: 'live web / out-of-corpus lookup', icon: 'search', tab: 'Data Sources', api: '/api/engines', stage: 'live' },
+      { id: 'vf-perplexity', name: 'Perplexity API', sub: 'live web / out-of-corpus lookup', icon: 'search', tab: 'System', api: '/api/llm/status', stage: 'live' },
       { id: 'vf-external', name: 'External Sources', sub: 'web / legislation / case databases', icon: 'database', tab: 'Data Sources', api: '/api/sources' },
     ],
   },

@@ -2,13 +2,13 @@
 const { CCIcon: Icon } = window;
 const { useState, useEffect } = React;
 
-const TABS = ['Document', 'Source Library', 'Dashboard', 'Insights', 'Citation Checker', 'Verification', 'Audit Trail', 'Data Sources'];
+const TABS = ['Document', 'Source Library', 'Dashboard', 'Insights', 'Citation Checker', 'Verification', 'Audit Trail', 'Data Sources', 'System'];
 const TAB_LABELS = { 'Source Library': 'Library', 'Citation Checker': 'Citations', 'Audit Trail': 'Audit', 'Data Sources': 'Sources' };
 // Visible nav — trimmed to the core workflow. All tabs remain routable via app.goTo().
 const NAV_TABS = ['Document', 'Citation Checker', 'Verification'];
 // The rest of the original full view — reachable from the "More" menu.
-const MORE_TABS = ['Source Library', 'Dashboard', 'Audit Trail', 'Data Sources'];
-const MORE_ICONS = { 'Source Library': 'library', 'Dashboard': 'layout-dashboard', 'Insights': 'bar-chart-3', 'Audit Trail': 'history', 'Data Sources': 'database' };
+const MORE_TABS = ['Source Library', 'Dashboard', 'Audit Trail', 'Data Sources', 'System'];
+const MORE_ICONS = { 'Source Library': 'library', 'Dashboard': 'layout-dashboard', 'Insights': 'bar-chart-3', 'Audit Trail': 'history', 'Data Sources': 'database', 'System': 'network' };
 
 function fsElement() { return document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement; }
 function FullscreenButton({ app }) {
@@ -55,10 +55,28 @@ function TopNav({ app, tab }) {
           {window.CCStageStepper ? <window.CCStageStepper app={app} bare /> : null}
         </div>
         <div style={{ flex: '0 0 auto', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <BackendChip app={app} />
           <FullscreenButton app={app} />
         </div>
       </div>
     </header>
+  );
+}
+
+// Live API/DB connection indicator. Clicking it opens the System page, where
+// every architecture node links into the running system.
+function BackendChip({ app }) {
+  const b = app.backend || (window.CC_BACKEND || { connected: false });
+  const online = !!b.connected;
+  const dot = online ? 'var(--verified)' : 'var(--ash)';
+  const label = online ? 'API connected' : 'Offline — static seed';
+  const rev = online && b.health ? ' · db r' + b.health.revision : '';
+  return (
+    <button onClick={() => app.goTo('System')} title={online ? 'Back-end live at ' + b.base + ' — open System map' : 'Back-end not reachable; showing static demo data. Run: node server/index.js'}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, height: 36, padding: '0 12px', borderRadius: 'var(--radius-full)', background: 'var(--surface-card)', border: '1px solid var(--hairline-strong)', cursor: 'pointer', font: 'var(--code-sm)', color: 'var(--charcoal)' }}>
+      <span style={{ width: 8, height: 8, borderRadius: '50%', background: dot, boxShadow: online ? '0 0 0 3px rgba(43,154,102,0.18)' : 'none', animation: online ? 'ccPulse 2.4s ease-in-out infinite' : 'none' }} />
+      {label}{rev}
+    </button>
   );
 }
 
@@ -519,6 +537,14 @@ function UploadModal({ open, onClose, app }) {
       }
       const cites = window.CCDetectCitations(pages.join('\n'));
       app.loadUploaded({ name: raw.name, pages, citations: cites });
+      // Register the upload with the back-end and run the verification pipeline
+      // server-side so the audit trail and runs reflect a real analysis.
+      if (window.CCApi && app.backend && app.backend.connected) {
+        window.CCApi.createDocument(raw.name, app.activeProject)
+          .then((doc) => window.CCApi.analyze(doc.id))
+          .then(() => app.pushSync())
+          .catch(() => {});
+      }
       app.toast(raw.name + ' parsed — ' + cites.length + ' citation' + (cites.length === 1 ? '' : 's') + ' detected', { icon: 'file-check-2', hue: 'var(--verified)' });
       setPhase('idle'); setFile(null); rawRef.current = null; onClose();
     } catch (e) {
@@ -762,6 +788,25 @@ function App() {
   const [wfStage, setWfStage] = useState('associate'); // associate | partner
   const [partnerApproved, setPartnerApproved] = useState({});
   const [reportMode, setReportMode] = useState('report'); // report | clean
+  // Live back-end connection + a sync counter that re-renders the app whenever
+  // a mutation has been persisted and window.CCData re-hydrated from the server.
+  const [backend, setBackend] = useState(window.CC_BACKEND || { connected: false });
+  const [syncRev, setSyncRev] = useState(0);
+  // After a server mutation resolves, pull a fresh snapshot so audit / queue /
+  // scores stay live, then bump syncRev to re-render. No-op when offline.
+  const pushSync = () => {
+    if (!window.CCApi || !backend.connected) return;
+    window.CCApi.refresh().then((snap) => { if (snap) setSyncRev((v) => v + 1); });
+  };
+  // Re-check liveness periodically so the status chip is honest.
+  useEffect(() => {
+    if (!window.CCApi) return;
+    const ping = () => window.CCApi.getHealth()
+      .then((h) => setBackend({ connected: true, health: h, base: window.CCApi.base }))
+      .catch(() => setBackend((b) => ({ ...b, connected: false })));
+    const iv = setInterval(ping, 15000);
+    return () => clearInterval(iv);
+  }, []);
   const findingById = (id) => window.CCData.findings.find((f) => f.id === id);
   const app = {
     reviews,
@@ -773,11 +818,15 @@ function App() {
     reportMode,
     activeProject,
     amendments,
+    backend,
+    syncRev,
+    api: window.CCApi || null,
+    pushSync,
     amend: (id, text) => setAmendments((a) => ({ ...a, [id]: text })),
     docEdits, docMode, setDocMode,
-    applyFix: (id) => { const r = window.CCData.revisions[id]; if (!r) return; setDocEdits((d) => ({ ...d, [id]: { revised: r, mode: 'applied' } })); const f = findingById(id); showToast('Fix applied to document — ' + (f ? f.citation : id), { icon: 'file-pen-line', hue: 'var(--verified)' }); },
-    editBlock: (id, text) => { setDocEdits((d) => ({ ...d, [id]: { revised: text, mode: 'manual' } })); showToast('Paragraph updated', { icon: 'pencil', hue: 'var(--mischar)' }); },
-    revertBlock: (id) => { setDocEdits((d) => { const n = { ...d }; delete n[id]; return n; }); },
+    applyFix: (id) => { const r = window.CCData.revisions[id]; if (!r) return; setDocEdits((d) => ({ ...d, [id]: { revised: r, mode: 'applied' } })); const f = findingById(id); showToast('Fix applied to document — ' + (f ? f.citation : id), { icon: 'file-pen-line', hue: 'var(--verified)' }); if (window.CCApi && backend.connected) window.CCApi.docEdit(id, { mode: 'applied' }).then(pushSync).catch(() => {}); },
+    editBlock: (id, text) => { setDocEdits((d) => ({ ...d, [id]: { revised: text, mode: 'manual' } })); showToast('Paragraph updated', { icon: 'pencil', hue: 'var(--mischar)' }); if (window.CCApi && backend.connected) window.CCApi.docEdit(id, { revised: text, mode: 'manual' }).then(pushSync).catch(() => {}); },
+    revertBlock: (id) => { setDocEdits((d) => { const n = { ...d }; delete n[id]; return n; }); if (window.CCApi && backend.connected) window.CCApi.docEdit(id, { revert: true }).then(pushSync).catch(() => {}); },
     downloadClean: () => {
       const blocks = window.CCData.docBlocks;
       const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -805,9 +854,9 @@ function App() {
     completeClean: () => { setReportMode('clean'); setReportOpen(true); window.scrollTo({ top: 0 }); showToast('Clean filing copy generated — corrections applied', { icon: 'file-check-2', hue: 'var(--verified)' }); },
     sendToPartner: () => { setWfStage('partner'); window.scrollTo({ top: 0 }); showToast('Handed to partner — approve each citation, or trust the associate review', { icon: 'arrow-up-right', hue: 'var(--hero-glow)' }); },
     backToAssociate: () => { setWfStage('associate'); },
-    approveCitation: (id) => { setPartnerApproved((p) => ({ ...p, [id]: true })); },
-    sendBackCitation: (id) => { setPartnerApproved((p) => { const n = { ...p }; delete n[id]; return n; }); showToast('Sent back to the associate', { icon: 'corner-up-left', hue: 'var(--mischar)' }); },
-    trustAll: (ids) => { setPartnerApproved((p) => { const n = { ...p }; ids.forEach((i) => { n[i] = true; }); return n; }); showToast('Associate review accepted in full — all citations approved', { icon: 'shield-check', hue: 'var(--primary-deep)' }); },
+    approveCitation: (id) => { setPartnerApproved((p) => ({ ...p, [id]: true })); if (window.CCApi && backend.connected) window.CCApi.partnerApprove(id).then(pushSync).catch(() => {}); },
+    sendBackCitation: (id) => { setPartnerApproved((p) => { const n = { ...p }; delete n[id]; return n; }); showToast('Sent back to the associate', { icon: 'corner-up-left', hue: 'var(--mischar)' }); if (window.CCApi && backend.connected) window.CCApi.partnerSendBack(id).then(pushSync).catch(() => {}); },
+    trustAll: (ids) => { setPartnerApproved((p) => { const n = { ...p }; ids.forEach((i) => { n[i] = true; }); return n; }); showToast('Associate review accepted in full — all citations approved', { icon: 'shield-check', hue: 'var(--primary-deep)' }); if (window.CCApi && backend.connected) Promise.all(ids.map((i) => window.CCApi.partnerApprove(i).catch(() => {}))).then(pushSync); },
     closeReport: () => setReportOpen(false),
     guardrails,
     setGuardrail: (k, v) => setGuardrails((g) => ({ ...g, [k]: v })),
@@ -828,6 +877,11 @@ function App() {
         Escalated: { msg: 'Escalated to Partner — ' + f.citation, icon: 'arrow-up-right', hue: 'var(--hero-glow)' },
       };
       showToast(map[action].msg, { icon: map[action].icon, hue: map[action].hue });
+      if (window.CCApi && backend.connected) window.CCApi.review(id, action, app.amendments[id]).then(pushSync).catch(() => {});
+    },
+    // Promote a discovered authority into the trusted corpus (Source Library).
+    promoteSource: (id) => {
+      if (window.CCApi && backend.connected) window.CCApi.promote(id).then(pushSync).catch(() => {});
     },
   };
 
@@ -884,6 +938,7 @@ function App() {
                 {tab === 'Verification' && <window.CCVerification app={app} />}
                 {tab === 'Audit Trail' && <window.CCAuditTrail app={app} />}
                 {tab === 'Data Sources' && <window.CCDataSources app={app} />}
+                {tab === 'System' && <window.CCSystem app={app} />}
               </>
             )}
           </div>

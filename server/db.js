@@ -21,7 +21,7 @@ const fs = require('fs');
 const path = require('path');
 const { loadSeed } = require('./seed-loader');
 
-const DB_FILE = path.join(__dirname, 'db.json');
+const DB_FILE = process.env.CC_DB_FILE || path.join(__dirname, 'db.json');
 const seed = loadSeed();
 
 let state = null;
@@ -107,20 +107,16 @@ function recomputeScores() {
   const verified = findings.filter((f) => f.status === 'Verified').length;
   const mischar = findings.filter((f) => f.status === 'Mischaracterised').length;
   const fabricated = findings.filter((f) => f.status === 'Fabricated').length;
-  // Health: verified weigh full, mischaracterised half, fabricated zero.
-  const health = findings.length
-    ? Math.round(((verified + mischar * 0.5) / findings.length) * 100)
-    : 100;
-  const avgConf = findings.length
-    ? Math.round(findings.reduce((a, f) => a + (f.confidence || 0), 0) / findings.length)
-    : 0;
+  // Citation health is a property of the document's citations (curated in the
+  // seed as 58/100), not of review progress — preserve it. Counts and the
+  // pass/review disposition ARE recomputed live from the flow engine.
   return {
     total: findings.length,
     verified,
     mischaracterised: mischar,
     fabricated,
-    health,
-    confidence: avgConf,
+    health: state.scores.health,
+    confidence: state.scores.confidence,
     risk: state.scores.risk,
     action: state.scores.action,
     pass: s.pass,

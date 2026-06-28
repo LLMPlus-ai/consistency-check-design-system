@@ -19,12 +19,24 @@ The system was built from materials supplied in the hackathon brief:
 - **`hard_coding/WhatsApp Image 2026-06-27...jpeg`** — high-level system architecture (Input → Extraction → Verification → Supervision → Output).
 - **`hard_coding/main_data/*.md`** — the local UK/Commonwealth case corpus (~57 authorities) used as the primary verification source.
 
+> ⚙️ **Now a connected full-stack app.** A dependency-free Node back-end
+> (`server/`) serves a REST API, a persisted database, the verification pipeline
+> and partner-ready reports — and connects the front-end to live **NVIDIA
+> Nemotron** (citation extraction + mischaracterisation) and **Perplexity**
+> (out-of-corpus retrieval), verifying against the real UK case-law corpus. Run
+> `node server/index.js` and open `http://localhost:4000/`. See **`BACKEND.md`**
+> for the architecture and full API reference. With no API keys configured it
+> degrades gracefully to deterministic, corpus-only verification on static demo
+> data, still labelled as such.
+
 ---
 
 ## What's in here
 
 | Path | Purpose |
 |---|---|
+| `server/` | Zero-dependency Node back-end — REST API, database, verification pipeline, NVIDIA + Perplexity integration, reports (see `BACKEND.md`). |
+| `scripts/ingest-corpus.js` | Builds the sanitized real case-law corpus (`server/corpus.json`). |
 | `styles.css` | Global entry point — link this one file. Imports only. |
 | `tokens/` | Colour, typography, spacing, radius, elevation, fonts, base reset. |
 | `components/core/` | Reusable primitives (Button, Badge, RiskBadge, Card, StatCard, Input, Tabs, FilterChip, Avatar, HealthMeter). |
