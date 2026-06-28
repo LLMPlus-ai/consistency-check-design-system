@@ -110,13 +110,18 @@ on('GET', /^\/api\/llm\/status$/, (req, res) => {
   });
 }, { noState: true });
 
-on('POST', /^\/api\/llm\/verify$/, async (req, res, m, body, s) => {
+on('POST', /^\/api\/llm\/verify$/, async (req, res, m, body) => {
   if (!body || !body.citation) return send(res, 400, { error: 'citation required' });
   const result = await verify.verifyCitation({ citation: body.citation, proposition: body.proposition, holding: body.holding });
-  appendAudit(s, 'AI Verification Engine', 'Live citation verification', `${body.citation} → ${result.status} (${result.confidence}%) via ${result.models.join(', ')}`);
-  await db.save(s);
+  // Record in the audit trail when the DB is reachable, but never let a missing
+  // table block the verification itself (so it works before the table exists).
+  try {
+    const s = await db.load();
+    appendAudit(s, 'AI Verification Engine', 'Live citation verification', `${body.citation} → ${result.status} (${result.confidence}%) via ${result.models.join(', ')}`);
+    await db.save(s);
+  } catch (e) { /* audit is best-effort */ }
   send(res, 200, result);
-});
+}, { noState: true });
 
 on('POST', /^\/api\/llm\/extract$/, async (req, res, m, body) => {
   if (!body || !body.text) return send(res, 400, { error: 'text required' });
