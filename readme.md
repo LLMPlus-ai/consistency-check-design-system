@@ -19,8 +19,6 @@ The system was built from materials supplied in the hackathon brief:
 - **`hard_coding/WhatsApp Image 2026-06-27...jpeg`** — high-level system architecture (Input → Extraction → Verification → Supervision → Output).
 - **`hard_coding/main_data/*.md`** — the local UK/Commonwealth case corpus (~57 authorities) used as the primary verification source.
 
-> ⚠️ **Prototype only.** No real APIs, databases, auth, or legal sources. All data in the UI kit is static demo data and labelled as such.
-
 ---
 
 ## What's in here
