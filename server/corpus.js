@@ -8,14 +8,10 @@
  * authority actually in the trusted corpus? This is the local, free, fast first
  * leg of the verification engine — Perplexity is only consulted when this misses.
  */
-const fs = require('fs');
-const path = require('path');
-
-const FILE = path.join(__dirname, 'corpus.json');
-
+// require() the JSON so serverless bundlers (Vercel) include it automatically.
 let corpus = { generatedAt: null, count: 0, cases: [], index: {} };
 try {
-  if (fs.existsSync(FILE)) corpus = JSON.parse(fs.readFileSync(FILE, 'utf8'));
+  corpus = require('./corpus.json');
 } catch (e) { console.error('[corpus] failed to load corpus.json:', e.message); }
 
 function norm(s) { return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim(); }

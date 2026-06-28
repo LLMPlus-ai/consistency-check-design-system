@@ -1,30 +1,23 @@
 'use strict';
 /*
- * db.js — the "Database" box in the architecture diagram.
+ * db.js — the runtime document store, backed by server/store.js.
  *
- * An in-memory document store seeded from the canonical demo dataset and
- * persisted to disk (server/db.json) so supervision actions, pipeline runs and
- * audit events survive a server restart. POST /api/reset reseeds it.
+ * State is loaded from and saved to the configured backend (Supabase / Postgres
+ * / file) on each request, so it works on stateless serverless functions. The
+ * static reference data (matter, findings, corpus, analysis…) is seeded from
+ * data.js/flow.js; only the mutable overlay (reviews, audit, documents, runs…)
+ * changes and is persisted.
  *
- * Shape (everything the UI bootstraps from `window.CCData`, plus runtime state):
- *   - all CCData collections (matter, findings, queue, audit, sources, …)
- *   - reviews            { [findingId]: 'Approved'|'Amended'|'Rejected'|'Escalated' }
- *   - partnerApproved    { [findingId]: true }
- *   - docEdits           { [findingId]: { revised, mode } }
- *   - amendments         { [findingId]: text }
- *   - promotedSources    [ id … ]   discovered authorities promoted into the corpus
- *   - documents          [ { id, name, status, uploadedAt, … } ]
- *   - runs               [ { id, documentId, stages[], startedAt, finishedAt } ]
- *   - meta               { seededAt, revision }
+ * Async interface:
+ *   load()            → current state (seeds + persists on first ever call)
+ *   save(state)       → bump revision + persist
+ *   reset(stamp)      → reseed + persist
+ *   recomputeScores(state)  → headline scores from current findings
  */
-const fs = require('fs');
-const path = require('path');
 const { loadSeed } = require('./seed-loader');
+const store = require('./store');
 
-const DB_FILE = process.env.CC_DB_FILE || path.join(__dirname, 'db.json');
 const seed = loadSeed();
-
-let state = null;
 
 function deepClone(v) { return JSON.parse(JSON.stringify(v)); }
 
@@ -52,69 +45,49 @@ function freshState(stamp) {
   });
 }
 
-function persist() {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(state, null, 2));
-  } catch (e) {
-    console.error('[db] persist failed:', e.message);
-  }
-}
-
-function init(stamp) {
-  if (fs.existsSync(DB_FILE)) {
-    try {
-      state = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
-      // Forward-compat: ensure newer runtime keys exist on an older db.json.
-      const base = freshState(stamp);
-      for (const k of Object.keys(base)) if (!(k in state)) state[k] = base[k];
-      return state;
-    } catch (e) {
-      console.error('[db] db.json unreadable, reseeding:', e.message);
-    }
-  }
-  state = freshState(stamp);
-  persist();
+// Forward-compat: make sure a state loaded from an older snapshot has every key.
+function ensureKeys(state, stamp) {
+  const base = freshState(stamp);
+  for (const k of Object.keys(base)) if (!(k in state)) state[k] = base[k];
   return state;
 }
 
-function reset(stamp) {
-  state = freshState(stamp);
-  persist();
+async function load() {
+  const raw = await store.loadRaw();
+  if (raw && raw.data) return ensureKeys(raw.data, raw.data.meta ? raw.data.meta.seededAt : nowStamp());
+  const state = freshState(nowStamp());
+  await store.saveRaw(state, state.meta.revision);
   return state;
 }
 
-function get() { return state; }
-
-/* Mutate under a function and persist once. Returns whatever fn returns. */
-function tx(fn) {
-  const out = fn(state);
-  state.meta.revision += 1;
-  persist();
-  return out;
+async function save(state) {
+  state.meta.revision = (state.meta.revision || 0) + 1;
+  await store.saveRaw(state, state.meta.revision);
+  return state;
 }
 
-/* ---- Derived helpers (kept here so routes stay thin) ---- */
+async function reset(stamp) {
+  const state = freshState(stamp || nowStamp());
+  await store.saveRaw(state, state.meta.revision);
+  return state;
+}
+
+function nowStamp() { return new Date().toISOString(); }
 
 const seedGuardrails = seed.CCDefaultGuardrails;
 
-// Recompute headline scores + queue metrics from current findings using the
-// SAME flow engine the client uses, so the API and UI never disagree.
-function recomputeScores() {
+// Recompute headline scores from the current findings using the SAME flow
+// engine the client uses. Citation health is curated reference data (58/100) —
+// it reflects the citations, not review progress — so it is preserved.
+function recomputeScores(state) {
   const flow = seed.CCFlow;
   const findings = state.findings;
-  const g = seedGuardrails;
-  const s = flow.summary(findings, g);
-  const verified = findings.filter((f) => f.status === 'Verified').length;
-  const mischar = findings.filter((f) => f.status === 'Mischaracterised').length;
-  const fabricated = findings.filter((f) => f.status === 'Fabricated').length;
-  // Citation health is a property of the document's citations (curated in the
-  // seed as 58/100), not of review progress — preserve it. Counts and the
-  // pass/review disposition ARE recomputed live from the flow engine.
+  const s = flow.summary(findings, seedGuardrails);
   return {
     total: findings.length,
-    verified,
-    mischaracterised: mischar,
-    fabricated,
+    verified: findings.filter((f) => f.status === 'Verified').length,
+    mischaracterised: findings.filter((f) => f.status === 'Mischaracterised').length,
+    fabricated: findings.filter((f) => f.status === 'Fabricated').length,
     health: state.scores.health,
     confidence: state.scores.confidence,
     risk: state.scores.risk,
@@ -125,13 +98,25 @@ function recomputeScores() {
   };
 }
 
+function recomputeQueueMetrics(state) {
+  const open = state.queue.filter((q) => q.status === 'Pending Review' || q.status === 'Needs Amendment').length;
+  state.queueMetrics = {
+    open,
+    critical: state.queue.filter((q) => q.priority === 'Critical' && (q.status === 'Pending Review' || q.status === 'Needs Amendment')).length,
+    high: state.queue.filter((q) => q.priority === 'High' && (q.status === 'Pending Review' || q.status === 'Needs Amendment')).length,
+    approved: state.queue.filter((q) => q.status === 'Approved').length,
+    readyForFiling: open === 0 ? 'Yes' : 'No',
+  };
+  return state.queueMetrics;
+}
+
 module.exports = {
-  init,
+  load,
+  save,
   reset,
-  get,
-  tx,
-  persist,
   recomputeScores,
+  recomputeQueueMetrics,
+  freshState,
   seed,
-  DB_FILE,
+  storeInfo: store.info,
 };
