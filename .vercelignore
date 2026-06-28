@@ -1,0 +1,11 @@
+# Never upload the hackathon brief data (contains LIVE API keys) or local DB.
+challenges_documents/
+server/db.json
+server/db.*.json
+.env
+.env.*
+.git/
+node_modules/
+uploads/
+*.log
+.DS_Store
